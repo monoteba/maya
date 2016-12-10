@@ -3,7 +3,7 @@ from mortentoo.helpers import main
 
 
 @main.undoable
-def cleanupCurves(stepped=False, tolerance=0.001):
+def cleanupCurves(stepped=False, keepLast=True, tolerance=0.001):
     totalKeys = 0
     
     def isclose(a, b):
@@ -17,7 +17,7 @@ def cleanupCurves(stepped=False, tolerance=0.001):
             count = len(keys)
             
             for i, (time, value) in enumerate(keys):
-                if i < count - 2:
+                if i < count - (1 if keepLast else 2):
                     nextValue = keys[i + 1][1]
                     
                     if stepped and isclose(value, nextValue):

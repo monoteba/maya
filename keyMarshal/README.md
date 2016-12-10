@@ -1,4 +1,4 @@
-# Key Marshal ![icon]( /icon/keyMarshal.png )
+# Key Marshal ![icon]( icon/keyMarshal.png )
 
 ### Description
 

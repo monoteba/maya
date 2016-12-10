@@ -12,5 +12,4 @@ _Note: Does currently **not** take tangent direction into consideration._
 2. Enter the following python command
 
 `import cleanAnimationCurves as cac`
-
 `cac.cleanupCurves()`

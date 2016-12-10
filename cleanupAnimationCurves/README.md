@@ -13,5 +13,10 @@ _Note: Does currently **not** take tangent direction into consideration._
 
     ```
     import cleanupAnimationCurves as cac
-    cac.cleanupCurves()
+    cac.cleanupCurves(False, 0.001)
     ```
+
+
+```
+cleanupCurves(stepped=False, tolerance=0.001)
+```

@@ -19,7 +19,7 @@ def undoable(function):
 
 
 @undoable
-def cleanupCurves(tolerance=0.001):
+def cleanupCurves(stepped=False, tolerance=0.001):
     totalKeys = 0
     
     def isclose(a, b):
@@ -35,7 +35,10 @@ def cleanupCurves(tolerance=0.001):
             for i, (time, value) in enumerate(keys):
                 if i < count - 2:
                     nextValue = keys[i + 1][1]
-                    if isclose(value, nextValue) and isclose(nextValue, keys[i + 2][1]):
+                    
+                    if stepped and isclose(value, nextValue):
+                        toRemove.append(keys[i+1][0])
+                    elif isclose(value, nextValue) and isclose(nextValue, keys[i + 2][1]):
                         toRemove.append(keys[i + 1][0])
             
             if toRemove:

@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// amKeyMarshal.mel
+// keyMarshal.mel
 // -----------------------------------------------------------------------------
 
 // Author: Morten Dalgaard Andersen
@@ -17,23 +17,23 @@
 //
 //  1.	Copy the script to the Maya script folder.
 //
-//  2.	Execute amKeyMarshal from the script editor or add the command to a
+//  2.	Execute keyMarshal() from the script editor or add the command to a
 // 		shelf button or hotkey.
 //
 //	3.	Use the supplied icon for the shelf button if you like :)
 
 
-global int $amKM_stepsCompleted;
+global int $km_stepsCompleted;
 
-global proc amKM_progressBegin(int $max, string $status)
+global proc km_progressBegin(int $max, string $status)
 {
 	// Use the progress bar in the main window
 	global string $gMainProgressBar;
 
 	// Figure out how many steps we need to perform
 	int $totalSteps				= 3;
-	int $optionTickDrawSpecial	= `checkBox -q -v "amKM_windowTickDrawSpecial"`;
-	int $optionKeyAll			= `checkBox -q -v "amKM_windowKeyAll"`;
+	int $optionTickDrawSpecial	= `checkBox -q -v "km_windowTickDrawSpecial"`;
+	int $optionKeyAll			= `checkBox -q -v "km_windowKeyAll"`;
 
 	if ($optionTickDrawSpecial)
 	{
@@ -43,10 +43,10 @@ global proc amKM_progressBegin(int $max, string $status)
 	}
 
 
-	global int $amKM_stepsCompleted;
-	$amKM_stepsCompleted++;
+	global int $km_stepsCompleted;
+	$km_stepsCompleted++;
 
-	string $message = "(" + $amKM_stepsCompleted + "/" + $totalSteps + ") " + $status;
+	string $message = "(" + $km_stepsCompleted + "/" + $totalSteps + ") " + $status;
 
 	progressBar -edit
 		-beginProgress
@@ -56,14 +56,14 @@ global proc amKM_progressBegin(int $max, string $status)
 		$gMainProgressBar;
 }
 
-global proc amKM_progressUpdate()
+global proc km_progressUpdate()
 {
 	// Use the progress bar in the main window
 	global string $gMainProgressBar;
 	progressBar -edit -step 1 $gMainProgressBar;
 }
 
-global proc amKM_progressEnd()
+global proc km_progressEnd()
 {
 	// Use the progress bar in the main window
 	global string $gMainProgressBar;
@@ -73,7 +73,7 @@ global proc amKM_progressEnd()
 	refresh -suspend off;
 }
 
-global proc float[] amKM_removeDuplicateKeys(float $listKeys[])
+global proc float[] km_removeDuplicateKeys(float $listKeys[])
 {
 	// *** This process is time consuming! ***
 
@@ -81,7 +81,7 @@ global proc float[] amKM_removeDuplicateKeys(float $listKeys[])
 	int $index = 0;
 
 	int $max = size($listKeys);
-	amKM_progressBegin($max, "Processing data...");
+	km_progressBegin($max, "Processing data...");
 
 	global string $gMainProgressBar;
 	for ($item in $listKeys)
@@ -92,16 +92,16 @@ global proc float[] amKM_removeDuplicateKeys(float $listKeys[])
 		if (0 == floatArrayCount($item, $result))
 			$result[$index++] = $item;
 
-		amKM_progressUpdate();
+		km_progressUpdate();
 	}
 
-	amKM_progressEnd();
+	km_progressEnd();
 
 	// Return array of keyframes
 	return $result;
 }
 
-global proc float[] amKM_getKeys(string $objects[], string $timeRange, float $breakdowns[])
+global proc float[] km_getKeys(string $objects[], string $timeRange, float $breakdowns[])
 {
 	// Get a list of all keys
 	float $listKeys[];
@@ -116,7 +116,7 @@ global proc float[] amKM_getKeys(string $objects[], string $timeRange, float $br
 		return {};
 
 	// Remove duplicates
-	float $listKeysClean[] = amKM_removeDuplicateKeys($listKeys);
+	float $listKeysClean[] = km_removeDuplicateKeys($listKeys);
 
 	// Remove breakdowns
 	if ( size($breakdowns) )
@@ -146,7 +146,7 @@ global proc float[] amKM_getKeys(string $objects[], string $timeRange, float $br
 
 }
 
-global proc float[] amKM_getBreakdowns(string $objects[], string $timeRange)
+global proc float[] km_getBreakdowns(string $objects[], string $timeRange)
 {
 	// Get a list of all keys
 	float $listKeys[];
@@ -161,13 +161,13 @@ global proc float[] amKM_getBreakdowns(string $objects[], string $timeRange)
 		return {};
 
 	// Remove duplicates
-	float $results[] = amKM_removeDuplicateKeys($listKeys);
+	float $results[] = km_removeDuplicateKeys($listKeys);
 
 	// Return keys
 	return $results;
 }
 
-global proc string[] amKM_getAttributes(string $objects[])
+global proc string[] km_getAttributes(string $objects[])
 {
 	// Get a list of all animated attributes
 	string $attributes[] = `keyframe -q -name $objects`;
@@ -175,19 +175,19 @@ global proc string[] amKM_getAttributes(string $objects[])
 	return $attributes;
 }
 
-global proc amKM_adjustCurves(string $attrSet[], float $timeSet[])
+global proc km_adjustCurves(string $attrSet[], float $timeSet[])
 {
 	if ( !size($attrSet) )
 		return;
 
-	int $optionTangents = `checkBox -q -v "amKM_windowTangents"`;
+	int $optionTangents = `checkBox -q -v "km_windowTangents"`;
 
 	if (!$optionTangents)
 	{
 		// Setup progress bar
 		global string $gMainProgressBar;
 		int $max = size($attrSet);
-		amKM_progressBegin($max, "Re-adjusting curves...");
+		km_progressBegin($max, "Re-adjusting curves...");
 
 		// Set the keys to the default tangent
 		int $index = 0;
@@ -204,14 +204,14 @@ global proc amKM_adjustCurves(string $attrSet[], float $timeSet[])
 			keyTangent -inTangentType $tangentIn[0] -outTangentType $tangentOut[0] -time $time $attr;
 			$index++;
 
-			amKM_progressUpdate();
+			km_progressUpdate();
 		}
 	}
 
-	amKM_progressEnd();
+	km_progressEnd();
 }
 
-global proc amKM_setFirstKey(string $selection[])
+global proc km_setFirstKey(string $selection[])
 {
 	for ($obj in $selection)
 	{
@@ -232,7 +232,7 @@ global proc amKM_setFirstKey(string $selection[])
 }
 
 // Returns total number of keys set
-global proc int amKM_setKeys(string $attributes[], float $listKeys[], int $breakdown)
+global proc int km_setKeys(string $attributes[], float $listKeys[], int $breakdown)
 {
 	if ( !size($listKeys) )
 		return 0;
@@ -242,9 +242,9 @@ global proc int amKM_setKeys(string $attributes[], float $listKeys[], int $break
 
 	// Setup progress bar
 	int $max = size($listKeys);
-	amKM_progressBegin($max, "Setting new keys...");
+	km_progressBegin($max, "Setting new keys...");
 
-	int $optionTangents = `checkBox -q -v "amKM_windowTangents"`;
+	int $optionTangents = `checkBox -q -v "km_windowTangents"`;
 	int $index = 0;
 	string $listKeysAttrSet[];
 	float $listKeysTimeSet[];
@@ -281,31 +281,31 @@ global proc int amKM_setKeys(string $attributes[], float $listKeys[], int $break
 		}
 
 		// Update progress whenever one key is completed
-		amKM_progressUpdate();
+		km_progressUpdate();
 	}
 
 	// End the progress bar
-	amKM_progressEnd();
+	km_progressEnd();
 
 	// Pass set keys to adjust curves
 	if (!$optionTangents)
-		amKM_adjustCurves($listKeysAttrSet, $listKeysTimeSet);
+		km_adjustCurves($listKeysAttrSet, $listKeysTimeSet);
 
 	// Pass attributes to set tick draw special
-	int $optionTickDrawSpecial = `checkBox -q -v "amKM_windowTickDrawSpecial"`;
+	int $optionTickDrawSpecial = `checkBox -q -v "km_windowTickDrawSpecial"`;
 	if ($optionTickDrawSpecial && !$breakdown)
-		amKM_setTickDrawSpecial($attributes);
+		km_setTickDrawSpecial($attributes);
 
 	// Return total number of keys set
 	return $index;
 }
 
-global proc amKM_setTickDrawSpecial(string $attributes[])
+global proc km_setTickDrawSpecial(string $attributes[])
 {
 	// Step 1: Determine which keys to set
 	global string $gMainProgressBar;
 	int $max = size($attributes);
-	amKM_progressBegin($max, "Reading tick draw special...");
+	km_progressBegin($max, "Reading tick draw special...");
 
 	int $markIndex = 0;
 	float $markedKeys[];
@@ -335,17 +335,17 @@ global proc amKM_setTickDrawSpecial(string $attributes[])
 			}
 			$index++;
 		}
-		amKM_progressUpdate();
+		km_progressUpdate();
 	}
 
-	amKM_progressEnd();
+	km_progressEnd();
 
 	// Step 2: Remove duplicates from list
-	float $cleanKeys[] = amKM_removeDuplicateKeys($markedKeys);
+	float $cleanKeys[] = km_removeDuplicateKeys($markedKeys);
 
 	// Step 3: Remove keys out of range if necessary
 	float $tdsKeys[];
-	int $optionKeyAll = `checkBox -q -v "amKM_windowKeyAll"`;
+	int $optionKeyAll = `checkBox -q -v "km_windowKeyAll"`;
 	if ($optionKeyAll)
 	{
 		$tdsKeys = $cleanKeys;
@@ -353,25 +353,25 @@ global proc amKM_setTickDrawSpecial(string $attributes[])
 	else
 	{
 		int $i = 0;
-		int $min = `floatField -q -v "amKM_windowStartTime"`;
-		int $max = `floatField -q -v "amKM_windowEndTime"`;
+		int $min = `floatField -q -v "km_windowStartTime"`;
+		int $max = `floatField -q -v "km_windowEndTime"`;
 
 		int $progressMax = size($cleanKeys);
-		amKM_progressBegin($progressMax, "Limiting range for tick draw special...");
+		km_progressBegin($progressMax, "Limiting range for tick draw special...");
 		for ($key in $cleanKeys)
 		{
 			// add key if within range
 			if ($key >= $min && $key <= $max)
 				$tdsKeys[$i++] = $key;
 
-			amKM_progressUpdate();
+			km_progressUpdate();
 		}
-		amKM_progressEnd();
+		km_progressEnd();
 	}
 
 	// Step 4: Set tick draw special
 	int $max = size($tdsKeys);
-	amKM_progressBegin($max, "Setting tick draw special...");
+	km_progressBegin($max, "Setting tick draw special...");
 
 	for ($key in $tdsKeys)
 	{
@@ -379,13 +379,13 @@ global proc amKM_setTickDrawSpecial(string $attributes[])
 		{
 			keyframe -t $key -tds true $attr;
 		}
-		amKM_progressUpdate();
+		km_progressUpdate();
 	}
 
-	amKM_progressEnd();
+	km_progressEnd();
 }
 
-global proc amKM_main()
+global proc km_main()
 {
 	// Get selection
 	string $selection[] = `ls -sl`;
@@ -404,26 +404,26 @@ global proc amKM_main()
 	refresh -suspend on;
 
 	// Get options
-	int $optionKeyAll				= `checkBox -q -v "amKM_windowKeyAll"`;
-	int $optionPerObject			= `checkBox -q -v "amKM_windowPerObject"`;
-	int $optionAllAttributes		= `checkBox -q -v "amKM_windowAllAttributes"`;
-	int $optionTangents				= `checkBox -q -v "amKM_windowTangents"`;
-	int $optionStaticChannels		= `checkBox -q -v "amKM_windowStaticChannels"`;
-	int $optionTickDrawSpecial		= `checkBox -q -v "amKM_windowTickDrawSpecial"`;
+	int $optionKeyAll				= `checkBox -q -v "km_windowKeyAll"`;
+	int $optionPerObject			= `checkBox -q -v "km_windowPerObject"`;
+	int $optionAllAttributes		= `checkBox -q -v "km_windowAllAttributes"`;
+	int $optionTangents				= `checkBox -q -v "km_windowTangents"`;
+	int $optionStaticChannels		= `checkBox -q -v "km_windowStaticChannels"`;
+	int $optionTickDrawSpecial		= `checkBox -q -v "km_windowTickDrawSpecial"`;
 
 	// Get time range if relevant
 	string $timeRange = "";
 	if (!$optionKeyAll)
 	{
-		float $start	= `floatField -q -v "amKM_windowStartTime"`;
-		float $end		= `floatField -q -v "amKM_windowEndTime"`;
+		float $start	= `floatField -q -v "km_windowStartTime"`;
+		float $end		= `floatField -q -v "km_windowEndTime"`;
 		$timeRange		= $start + ":" + $end;
 	}
 
 	// Begin task!
 	// If we want to key all attributes, we need to set a key manually on the first key
 	if ($optionAllAttributes)
-		amKM_setFirstKey($selection);
+		km_setFirstKey($selection);
 	// Delete Static Channels
 	else if ($optionStaticChannels)
 		delete -staticChannels -unitlessAnimationCurves false -hierarchy none -controlPoints 0 -shape 1;
@@ -431,8 +431,8 @@ global proc amKM_main()
 	int $totalKeysSet;
 
 	// Set steps completed to 0
-	global int $amKM_stepsCompleted;
-	$amKM_stepsCompleted = 0;
+	global int $km_stepsCompleted;
+	$km_stepsCompleted = 0;
 
 	// Determine how to set keys and what attributes are needed
 	if ($optionPerObject)
@@ -452,19 +452,19 @@ global proc amKM_main()
 			$objects[0] = $obj;
 
 			// Get lists of breakdowns and keys (breakdowns first, because they're needed to get keys!)
-			float $breakdowns[]	= amKM_getBreakdowns($objects, $timeRange);
-			float $keys[]		= amKM_getKeys($objects, $timeRange, $breakdowns);
+			float $breakdowns[]	= km_getBreakdowns($objects, $timeRange);
+			float $keys[]		= km_getKeys($objects, $timeRange, $breakdowns);
 
 			// Get a list of the attributes we want to key
 			string $objects[];
 			$objects[0] = $obj;
-			string $attributes[] = amKM_getAttributes($objects);
+			string $attributes[] = km_getAttributes($objects);
 
 			// Loop and set breakdowns
-			$totalKeysSet += amKM_setKeys($attributes, $breakdowns, true);
+			$totalKeysSet += km_setKeys($attributes, $breakdowns, true);
 
 			// Loop and set keys
-			$totalKeysSet += amKM_setKeys($attributes, $keys, false);
+			$totalKeysSet += km_setKeys($attributes, $keys, false);
 		}
 	}
 	else
@@ -472,17 +472,17 @@ global proc amKM_main()
 		// Key all objects wherever there is a key on any object in selection
 
 		// Get lists of breakdowns and keys (breakdowns first, because they're needed to get keys!)
-		float $breakdowns[]	= amKM_getBreakdowns($selection, $timeRange);
-		float $keys[]		= amKM_getKeys($selection, $timeRange, $breakdowns);
+		float $breakdowns[]	= km_getBreakdowns($selection, $timeRange);
+		float $keys[]		= km_getKeys($selection, $timeRange, $breakdowns);
 
 		// Get a list of the attributes we want to key
-		string $attributes[] = amKM_getAttributes($selection);
+		string $attributes[] = km_getAttributes($selection);
 
 		// Loop and set breakdowns
-		$totalKeysSet += amKM_setKeys($attributes, $breakdowns, true);
+		$totalKeysSet += km_setKeys($attributes, $breakdowns, true);
 
 		// Loop and set keys
-		$totalKeysSet += amKM_setKeys($attributes, $keys, false);
+		$totalKeysSet += km_setKeys($attributes, $keys, false);
 	}
 
 	// Calculate time the operation took
@@ -492,82 +492,82 @@ global proc amKM_main()
 
 }
 
-global proc amKM_closeUI()
+global proc km_closeUI()
 {
-	if (`window -exists amKM_windowMain`)
-		deleteUI -window amKM_windowMain;
-	// if (`windowPref -exists amKM_windowMain`)
-	// 	windowPref -remove amKM_windowMain;
+	if (`window -exists km_windowMain`)
+		deleteUI -window km_windowMain;
+	// if (`windowPref -exists km_windowMain`)
+	// 	windowPref -remove km_windowMain;
 }
 
-global proc amKM_savePref()
+global proc km_savePref()
 {
-	if (`window -exists amKM_windowMain`)
+	if (`window -exists km_windowMain`)
 	{
-		optionVar -iv "amKM_windowKeyAll" `checkBox -q -v amKM_windowKeyAll`;
-		optionVar -iv "amKM_windowPerObject" `checkBox -q -v amKM_windowPerObject`;
-		optionVar -iv "amKM_windowAllAttributes" `checkBox -q -v amKM_windowAllAttributes`;
-		optionVar -iv "amKM_windowTangents" `checkBox -q -v amKM_windowTangents`;
-		optionVar -iv "amKM_windowStaticChannels" `checkBox -q -v amKM_windowStaticChannels`;
-		optionVar -iv "amKM_windowTickDrawSpecial" `checkBox -q -v amKM_windowTickDrawSpecial`;
-		optionVar -fv "amKM_windowStartTime" `floatField -q -v amKM_windowStartTime`;
-		optionVar -fv "amKM_windowEndTime" `floatField -q -v amKM_windowEndTime`;
+		optionVar -iv "km_windowKeyAll" `checkBox -q -v km_windowKeyAll`;
+		optionVar -iv "km_windowPerObject" `checkBox -q -v km_windowPerObject`;
+		optionVar -iv "km_windowAllAttributes" `checkBox -q -v km_windowAllAttributes`;
+		optionVar -iv "km_windowTangents" `checkBox -q -v km_windowTangents`;
+		optionVar -iv "km_windowStaticChannels" `checkBox -q -v km_windowStaticChannels`;
+		optionVar -iv "km_windowTickDrawSpecial" `checkBox -q -v km_windowTickDrawSpecial`;
+		optionVar -fv "km_windowStartTime" `floatField -q -v km_windowStartTime`;
+		optionVar -fv "km_windowEndTime" `floatField -q -v km_windowEndTime`;
 
 		// Used to know if there are any saved prefs beforehand
-		optionVar -iv "amKM_savedPrefs" 1;
+		optionVar -iv "km_savedPrefs" 1;
 	}
 }
 
-global proc amKM_uiToggleTimeRange()
+global proc km_uiToggleTimeRange()
 {
-	int $enable = !(`checkBox -q -v amKM_windowKeyAll`);
+	int $enable = !(`checkBox -q -v km_windowKeyAll`);
 
-	text -e -en $enable "amKM_windowTimeLabel";
-	floatField -e -en $enable "amKM_windowStartTime";
-	floatField -e -en $enable "amKM_windowEndTime";
-	button -e -en $enable "amKM_windowScene";
-	button -e -en $enable "amKM_windowPlayback";
+	text -e -en $enable "km_windowTimeLabel";
+	floatField -e -en $enable "km_windowStartTime";
+	floatField -e -en $enable "km_windowEndTime";
+	button -e -en $enable "km_windowScene";
+	button -e -en $enable "km_windowPlayback";
 }
 
-global proc amKM_uiToggleOptions()
+global proc km_uiToggleOptions()
 {
-	int $enable = !(`checkBox -q -v amKM_windowAllAttributes`);
-	checkBox -e -en $enable "amKM_windowStaticChannels";
+	int $enable = !(`checkBox -q -v km_windowAllAttributes`);
+	checkBox -e -en $enable "km_windowStaticChannels";
 }
 
-global proc amKM_uiSetSceneRange()
+global proc km_uiSetSceneRange()
 {
 	float $start	= `playbackOptions -q -ast`;
 	float $end		= `playbackOptions -q -aet`;
 
-	floatField -e -v $start "amKM_windowStartTime";
-	floatField -e -v $end "amKM_windowEndTime";
+	floatField -e -v $start "km_windowStartTime";
+	floatField -e -v $end "km_windowEndTime";
 }
 
-global proc amKM_uiSetPlaybackRange()
+global proc km_uiSetPlaybackRange()
 {
 	float $start = `playbackOptions -q -min`;
 	float $end = `playbackOptions -q -max`;
 
-	floatField -e -v $start "amKM_windowStartTime";
-	floatField -e -v $end "amKM_windowEndTime";
+	floatField -e -v $start "km_windowStartTime";
+	floatField -e -v $end "km_windowEndTime";
 }
 
-global proc amKM_loadDefaults()
+global proc km_loadDefaults()
 {
-	optionVar -iv "amKM_savedPrefs" 0;
-	amKM_openUI();
+	optionVar -iv "km_savedPrefs" 0;
+	km_openUI();
 }
 
-global proc amKM_help()
+global proc km_help()
 {
-	showHelp -absolute "http://amorten.com/asset/amkeymarshal/";
+	showHelp -absolute "http://amorten.com/asset/keyMarshal/";
 }
 
-global proc amKM_openUI()
+global proc km_openUI()
 {
 	// Delete old UI
-	amKM_closeUI();
+	km_closeUI();
 
 	// Get variable values
 	int
@@ -581,17 +581,17 @@ global proc amKM_openUI()
 		$optionStart,
 		$optionEnd;
 
-	if (`optionVar -q "amKM_savedPrefs"`)
+	if (`optionVar -q "km_savedPrefs"`)
 	{
 		// Load saved values
-		$optionKeyAll					= `optionVar -q "amKM_windowKeyAll"`;
-		$optionPerObject				= `optionVar -q "amKM_windowPerObject"`;
-		$optionAllAttributes			= `optionVar -q "amKM_windowAllAttributes"`;
-		$optionTangents					= `optionVar -q "amKM_windowTangents"`;
-		$optionStaticChannels			= `optionVar -q "amKM_windowStaticChannels"`;
-		$optionTickDrawSpecial			= `optionVar -q "amKM_windowTickDrawSpecial"`;
-		$optionStart					= `optionVar -q "amKM_windowStartTime"`;
-		$optionEnd						= `optionVar -q "amKM_windowEndTime"`;
+		$optionKeyAll					= `optionVar -q "km_windowKeyAll"`;
+		$optionPerObject				= `optionVar -q "km_windowPerObject"`;
+		$optionAllAttributes			= `optionVar -q "km_windowAllAttributes"`;
+		$optionTangents					= `optionVar -q "km_windowTangents"`;
+		$optionStaticChannels			= `optionVar -q "km_windowStaticChannels"`;
+		$optionTickDrawSpecial			= `optionVar -q "km_windowTickDrawSpecial"`;
+		$optionStart					= `optionVar -q "km_windowStartTime"`;
+		$optionEnd						= `optionVar -q "km_windowEndTime"`;
 	}
 	else
 	{
@@ -612,17 +612,17 @@ global proc amKM_openUI()
 	int $largeW		= 137;
 	int $height		= 20;
 
-	$amKM_windowMain = `window -t "amKeyMarshal 1.2" -sizeable false -w 290 amKM_windowMain`;
+	$km_windowMain = `window -t "keyMarshal 1.2" -sizeable false -w 290 km_windowMain`;
 
 	rowColumnLayout -nr 5 -ro 5 "bottom" 4;
 
 		menuBarLayout -h 20 -w 290 -enableBackground true;
 			menu -l "Load Defaults" -en 1;
-				menuItem -l "Confirm" -c "amKM_loadDefaults" -en 1;
+				menuItem -l "Confirm" -c "km_loadDefaults" -en 1;
 				setParent -menu ..;
 			setParent..;
 			menu -l "Help" -en 1;
-				menuItem -l "Online Documentation" -en 1 -c "amKM_help";
+				menuItem -l "Online Documentation" -en 1 -c "km_help";
 			setParent..;
 		setParent..;
 
@@ -634,56 +634,56 @@ global proc amKM_openUI()
 
 			rowColumnLayout -nr 1 -cs 1 5 -ro 1 "top" 4;
 				separator -style "none" -width $smallW;
-				checkBox -l "Key All" -v $optionKeyAll -height $height -cc "amKM_uiToggleTimeRange();"
+				checkBox -l "Key All" -v $optionKeyAll -height $height -cc "km_uiToggleTimeRange();"
 					-ann "Set a key wherever there already is a key."
-					amKM_windowKeyAll;
+					km_windowKeyAll;
 			setParent..;
 
 			rowColumnLayout -nr 1 -cs 1 5;
-				text -l "Start/End" -align "left" -font "boldLabelFont" -width $smallW -height $height amKM_windowTimeLabel;
-				floatField -v $optionStart -minValue -99999999 -maxValue 99999999 -step 1 -pre 2 -w $mediumW -height $height amKM_windowStartTime;
-				floatField -v $optionEnd -minValue -99999999 -maxValue 99999999 -step 1 -pre 2 -w $mediumW -height $height amKM_windowEndTime;
+				text -l "Start/End" -align "left" -font "boldLabelFont" -width $smallW -height $height km_windowTimeLabel;
+				floatField -v $optionStart -minValue -99999999 -maxValue 99999999 -step 1 -pre 2 -w $mediumW -height $height km_windowStartTime;
+				floatField -v $optionEnd -minValue -99999999 -maxValue 99999999 -step 1 -pre 2 -w $mediumW -height $height km_windowEndTime;
 			setParent..;
 
 			rowColumnLayout -nr 1 -cs 1 5;
 				separator -style "none" -width $smallW;
-				button -l "Scene" -c "amKM_uiSetSceneRange();" -w $mediumW -h $height amKM_windowScene;
-				button -l "Playback" -c "amKM_uiSetPlaybackRange();" -w $mediumW -h $height amKM_windowPlayback;
+				button -l "Scene" -c "km_uiSetSceneRange();" -w $mediumW -h $height km_windowScene;
+				button -l "Playback" -c "km_uiSetPlaybackRange();" -w $mediumW -h $height km_windowPlayback;
 			setParent..;
 
 			rowColumnLayout -nr 1 -cs 1 5 -ro 1 "top" 20;
 				text -l "Options" -align "left" -width $smallW -height $height -font "boldLabelFont";
-				checkBox -l "All Keyable Attributes" -v $optionAllAttributes -height $height -cc "amKM_uiToggleOptions();"
+				checkBox -l "All Keyable Attributes" -v $optionAllAttributes -height $height -cc "km_uiToggleOptions();"
 					-ann "Disable to only set keys in attributes that are already keyed."
-					amKM_windowAllAttributes;
+					km_windowAllAttributes;
 			setParent..;
 
 			rowColumnLayout -nr 1 -cs 1 5;
 				separator -style "none" -width $smallW;
 				checkBox -l "Per Object Basis" -v $optionPerObject -height $height
 					-ann "Set keys based on individual objects.\n\nDisable to set a key wherever there\nis a key from the selection."
-					amKM_windowPerObject;
+					km_windowPerObject;
 			setParent..;
 
 			rowColumnLayout -nr 1 -cs 1 5;
 				separator -style "none" -width $smallW;
 				checkBox -l "Fixed Tangents" -v $optionTangents -height $height
 					-ann "Preserve the shape of the animation\ncurves by using fixed tangents.\n\nDisable to use default tangent type."
-					amKM_windowTangents;
+					km_windowTangents;
 			setParent..;
 
 			rowColumnLayout -nr 1 -cs 1 5;
 				separator -style "none" -width $smallW;
 				checkBox -l "Delete Static Channels" -v $optionStaticChannels -height $height
 					-ann "Remove keys on attributes that do not change.\n\nThis speeds up Maya's processing."
-					amKM_windowStaticChannels;
+					km_windowStaticChannels;
 			setParent..;
 
 			rowColumnLayout -nr 1 -cs 1 5 -ro 1 "bottom" 10;
 				separator -style "none" -width $smallW;
-				checkBox -l "Honour Tick Draw Special" -v $optionTickDrawSpecial -height $height -cc "amKM_uiToggleOptions();"
+				checkBox -l "Honour Tick Draw Special" -v $optionTickDrawSpecial -height $height -cc "km_uiToggleOptions();"
 					-ann "If any key on a specific frame uses \"draw special\”,\nall attributes for that frame will become \"draw special\"."
-					amKM_windowTickDrawSpecial;
+					km_windowTickDrawSpecial;
 			setParent..;
 
 		setParent..;
@@ -691,8 +691,8 @@ global proc amKM_openUI()
 		columnLayout -rs 5 -co "both" 4;
 
 			rowColumnLayout -nr 1 -cs 1 6 -ro 1 "top" 4;
-				button -l "Apply" -c "amKM_apply();" -w $largeW -h 23;
-				button -l "Close" -c "amKM_savePref(); amKM_closeUI();" -w $largeW -h 23;
+				button -l "Apply" -c "km_apply();" -w $largeW -h 23;
+				button -l "Close" -c "km_savePref(); km_closeUI();" -w $largeW -h 23;
 			setParent..;
 
 		setParent..;
@@ -702,17 +702,17 @@ global proc amKM_openUI()
 	showWindow;
 
 	// Toggle enabled UI elements
-	amKM_uiToggleTimeRange();
-	amKM_uiToggleOptions();
+	km_uiToggleTimeRange();
+	km_uiToggleOptions();
 }
 
-global proc amKM_apply()
+global proc km_apply()
 {
-	amKM_savePref();
-	amKM_main();
+	km_savePref();
+	km_main();
 }
 
-global proc amKeyMarshal()
+global proc keyMarshal()
 {
-	amKM_openUI();
+	km_openUI();
 }

@@ -430,7 +430,7 @@ class UI(object):
         
         # Window definition
         cmds.window(self.window,
-                    title="amStopwatch",
+                    title="stopwatch",
                     sizeable=True,
                     width=windowWidth,
                     height=windowHeight)
@@ -479,7 +479,7 @@ class UI(object):
                                    )
         
         # Title
-        cmds.text(label="amStopwatch", align="left", font="boldLabelFont", h=stdHeight)
+        cmds.text(label="stopwatch", align="left", font="boldLabelFont", h=stdHeight)
         
         # Start/Reset Buttons
         cmds.button(self.buttonA, label="Start", w=buttonWidth, h=buttonHeight, c=self.buttonStart)
@@ -783,7 +783,7 @@ class UI(object):
             else:
                 self.buttonStart()
         else:
-            cmds.warning("amStopwatch must be open.")
+            cmds.warning("stopwatch must be open.")
     
     def buttonHotkeyB(self):
         if cmds.window(self.window, exists=True):
@@ -792,7 +792,7 @@ class UI(object):
             else:
                 self.buttonReset()
         else:
-            cmds.warning("amStopwatch must be open.")
+            cmds.warning("stopwatch must be open.")
     
     def setOptionPlayBack(self, value):
         self.playbackInMaya = value
@@ -834,11 +834,11 @@ class UI(object):
     @staticmethod
     def hotkey(*args):
         dictCommands = OrderedDict()
-        dictCommands["amStopwatchStartLap"] = {"command":    'python("amsw.ui.buttonHotkeyA()")',
-                                               "annotation": "amStopwatch Start/Lap",
+        dictCommands["stopwatchStartLap"] = {"command":    'python("amsw.ui.buttonHotkeyA()")',
+                                               "annotation": "stopwatch Start/Lap",
                                                "type":       "python"}
-        dictCommands["amStopwatchStopReset"] = {"command":    'python("amsw.ui.buttonHotkeyB()")',
-                                                "annotation": "amStopwatch Stop/Reset",
+        dictCommands["stopwatchStopReset"] = {"command":    'python("amsw.ui.buttonHotkeyB()")',
+                                                "annotation": "stopwatch Stop/Reset",
                                                 "type":       "python"}
         
         hotkeyManager.dialog(dictCommands)
@@ -849,7 +849,7 @@ class SceneData(object):
     
     def __init__(self):
         self.node = None
-        self.fileInfo = "amStopwatch"
+        self.fileInfo = "stopwatch"
     
     def read(self):
         self.node = cmds.fileInfo(self.fileInfo, q=True)
@@ -871,7 +871,7 @@ class SceneData(object):
     
     def make(self):
         # Create a new node for storing data
-        self.node = cmds.createNode("transform", name="amStopwatch", skipSelect=True)
+        self.node = cmds.createNode("transform", name="stopwatch", skipSelect=True)
         cmds.fileInfo(self.fileInfo, self.node)
         
         # Add data attribute to our node

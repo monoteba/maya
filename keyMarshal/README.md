@@ -1,8 +1,7 @@
-# Key Marshal
+# Key Marshal ![icon]( https://github.com/mortentoo/Maya/raw/master/keyMarshal/icon/keyMarshal.png )
 
 ### Description
 
-![icon]( https://github.com/mortentoo/Maya/raw/master/keyMarshal/icon/keyMarshal.png )
 
 Ensures all attributes are keyed if at least one attribute has a key. Will also set a key if another object in the selection has a key, unless the **Per Object** option is selected.
 

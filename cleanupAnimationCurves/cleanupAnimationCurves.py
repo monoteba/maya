@@ -1,4 +1,3 @@
-# from pymel.core import *
 import pymel.core as pm
 
 
@@ -52,6 +51,3 @@ def cleanupCurves(tolerance=0.001):
         totalKeys = clean(pm.listConnections(obj, type="animCurve"), totalKeys)
     
     print "// CleanupCurves ({0} keys removed on )".format(totalKeys)
-
-
-cleanupCurves()

@@ -1,0 +1,59 @@
+proc CopyAnimationToObjects() {
+    $offset = 50;
+
+    $start = 25;
+    $end = 150;
+
+    $scaleStart = 25;
+    $scaleEnd = 75;
+
+
+
+    $scalerange = string($scaleStart) + ":" + string($scaleEnd);
+
+    $selection = `ls -sl`;
+
+    string $objects[];
+    int $size = `size $selection`;
+
+    // Reverse selection
+    /*
+    for ($n = 0; $n < $size; $n++) {
+        $objects[( $size - 1 - $n)] = $selection[$n];
+    }*/
+
+    $objects = $selection;
+    $index = 0;
+
+    // Change these to make the eye look move
+    // $start = `findKeyframe -which first $objects[0]`;
+    // $end = `findKeyframe -which last $objects[0]`;
+
+    $range = string($start) + ":" + string($end);
+    copyKey -t $range -clipboard "anim" $objects[0];
+
+    for ( $object in $objects ) {
+        ++$index;
+
+        if ($index > 1) {
+            // Paste the key on the new object
+            $range = string($start) + ":" + string($end);
+            pasteKey -o "replace" -t $range $object;
+
+            if ($offset > 0) {
+                // Then scale the key with new lower and upper bounds
+                $rand1 = int(rand($offset));
+                $rand2 = int(rand($offset));
+
+                $lower = $scaleStart + $rand1 - $offset / 2;
+                $upper = $scaleEnd + $rand2 - $offset / 2;
+
+                scaleKey -t $scalerange -nst $lower -net $upper $object;
+                snapKey $object;
+            }
+
+        }
+    }
+}
+
+CopyAnimationToObjects();

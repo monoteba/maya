@@ -1,0 +1,99 @@
+// --------------------------------------------------------------------
+// flipbook.mel
+// --------------------------------------------------------------------
+// 
+// Author: Morten Dalgaard Andersen
+// Author URI: http://www.montsoe.com
+//
+// License: GNU General Public License v2 or later
+// License URI: http://www.gnu.org/licenses/gpl-2.0.html
+// 
+// Version: 0.1b
+// Modified: 2014-03-18
+//
+// --------------------------------------------------------------------
+//
+// Instructions on how to use:
+//
+
+
+
+// --------------------------------------------------------------------
+//                                                                   //
+//                        THE KEY NUDGER SCRIPT                      //
+//                                                                   //
+// --------------------------------------------------------------------
+
+
+// BUGS :(
+// --------------------------------------------------------------------
+// 
+
+// Global variables
+global int $kn_units;
+global float $kn_ra[];
+global float $kn_nra[];
+global string $kn_tr;
+global int $kn_tc;
+
+// Make sure we have the playback slider :)
+global string $gPlayBackSlider;
+
+
+// Set units to move
+int $kn_units = 1;
+int $kn_tc = 0;
+
+
+global proc kn_nudgeKeys() {
+	
+	// Global variables
+	global float $kn_ra[];
+	global float $kn_nra[];
+	global string $kn_tr;
+	global int $kn_units;
+	global int $kn_tc;
+	
+	// Make sure we have the playback slider :)
+	global string $gPlayBackSlider;
+	
+	// Delta time range
+	int $kn_delta0 = $kn_nra[0] - $kn_tc;
+	int $kn_delta1 = $kn_nra[1] - $kn_tc;
+	
+	if ( $kn_delta0 == $kn_ra[0] && $kn_delta1 == $kn_ra[1] ) {
+		
+		print "true";
+		
+		string $kn_tr = $kn_ra[0] + ":" + $kn_ra[1];
+		$kn_tc += $kn_units;
+	
+	} else {
+		
+		print "false";
+		
+		clear($kn_ra);
+		clear($kn_nra);
+		$kn_tc = 0;
+		
+		// Query selected time slider range and time
+		float $kn_ra[] = `timeControl -q -rangeArray $gPlayBackSlider`;
+		string $kn_tr = $kn_ra[0] + ":" + $kn_ra[1];
+		float $kn_nra[] = $kn_ra;
+		
+	}
+
+	
+	// Move keys a specific number of units
+	keyframe -e -option over -animation objects -time $kn_tr -relative -timeChange $kn_units; 
+	
+	// Update current time and array
+	currentTime -u true ($kn_ra[0] + $kn_units);
+	$kn_ra[0] += $kn_units;
+	$kn_ra[1] += $kn_units;
+	
+	print $kn_ra;
+	
+}
+
+kn_nudgeKeys();

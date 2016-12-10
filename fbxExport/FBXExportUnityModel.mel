@@ -1,0 +1,379 @@
+// --------------------------------------------------------------------
+// FBXExportUnityModel.mel
+// --------------------------------------------------------------------
+//
+// Author: Morten Dalgaard Andersen
+// Author URI: http://www.amorten.com
+//
+// License: GNU General Public License v2 or later
+// License URI: http://www.gnu.org/licenses/gpl-2.0.html
+//
+// Version: 1.0
+// Modified: 2015-03-03
+//
+// --------------------------------------------------------------------
+//
+// Instructions on how to use:
+//
+//  1.	Copy the script to the Maya script folder.
+//
+//  2.	Execute FBXExportUnityAnimation from the script editor.
+//
+
+
+// --------------------------------------------------------------------
+//                                                                   //
+//                    FBXExport Unity Animation                      //
+//                                                                   //
+// --------------------------------------------------------------------
+
+global proc FBXExportUnityModel ()
+{
+	if (`window -exists fbxum_window`)
+		fbxum_savePrefs();
+
+	fbxum_ui();
+}
+
+
+global proc fbxum_savePrefs()
+{
+	// Get global variables in window
+	global float $fbxum_start; // animation start
+	global float $fbxum_end; // animation end
+	global string $fbxum_filename; // Filename
+	global int $fbxum_animation;
+	global string $fbxum_location; // export location
+
+	// Only set variables, if window exist
+	if (`window -exists fbxum_window`)
+	{
+		// Save values in Maya prefs options
+		optionVar -fv "fbxum_ov_start" `floatField -q -v fbxum_ui_start`;
+		optionVar -fv "fbxum_ov_end" `floatField -q -v fbxum_ui_end`;
+		optionVar -sv "fbxum_ov_model" `textField -q -tx fbxum_ui_filename`;
+		optionVar -iv "fbxum_ov_animation" `checkBox -q -v fbxum_ui_animation`;
+		optionVar -sv "fbxum_ov_location" $fbxum_location;
+
+		// To know when prefs are saved
+		optionVar -iv "fbxum_ov_savedPrefs" 1;
+	}
+
+}
+
+// User Interface
+global proc fbxum_ui()
+{
+	// Variables
+	global float $fbxum_start; // animation start
+	global float $fbxum_end; // animation end
+	global string $fbxum_filename; // model, Lou or Dawn
+	global int $fbxum_animation;
+	global string $fbxum_location; // export location
+
+	// If settings have been saved
+	if (`optionVar -q "fbxum_ov_savedPrefs"`)
+	{
+		optionVar -iv "fbxum_ov_savedPrefs" 1;
+
+		// Query option variables
+		$fbxum_start = `optionVar -q "fbxum_ov_start"`;
+		$fbxum_end = `optionVar -q "fbxum_ov_end"`;
+		$fbxum_filename = `optionVar -q "fbxum_ov_model"`;
+		$fbxum_animation = `optionVar -q "fbxum_ov_animation"`;
+		$fbxum_location = `optionVar -q "fbxum_ov_location"`;
+	}
+	else
+	{
+		// Set default values
+		$fbxum_start = `playbackOptions -q -animationStartTime`;
+		$fbxum_end = `playbackOptions -q -animationEndTime`;
+		$fbxum_filename = "";
+		$fbxum_animation = 0;
+		$fbxum_location = `workspace -q -dir`;
+	}
+
+	// Remove window and prefs if exist
+	if ( `window -exists fbxum_window`) {
+		deleteUI -window fbxum_window;
+	}
+
+	if ( `windowPref -exists fbxum_window`) {
+		windowPref -remove fbxum_window;
+	}
+
+	// Create the window
+	global string $fbxum_window;
+	$fbxum_window = `window
+		-t "FBX Export Model for Unity"
+		-s false
+		-rtf true
+		fbxum_window`;
+
+	int $loc_size = size($fbxum_location);
+	string $short_location;
+	if ($loc_size > 40)
+		$short_location = "..." + substring($fbxum_location, $loc_size - 40, $loc_size);
+	else
+		$short_location = $fbxum_location;
+
+	// Setup the window layout
+	int $label_width = 70;
+	int $lf = 225; // large field
+	int $mf = 130; // medium field
+	int $sf = 40; // small field
+	int $label_height = 26;
+
+
+	rowColumnLayout -nr 1;
+		columnLayout -rs 5 -co "both" 5;
+
+			// Header
+			rowColumnLayout -nr 1 -cs 1 5 -ro 1 "both" 10;
+				text -l "" -w $label_width;
+				image -ebg 0 -image "" -w 32 -h 32 fbxum_ui_image;
+				text -l "FBX Model Exporter" -font "boldLabelFont" -h 32 -w 188 -align "left";
+			setParent..;
+
+			// Model
+			rowColumnLayout -nr 1 -cs 1 5;
+				text -l "Filename" -align "right" -w $label_width -h $label_height;
+				textField -text $fbxum_filename -pht "e.g. 010_Train" -w $lf -h $label_height -cc "fbxum_updateAnimationName" fbxum_ui_filename;
+			setParent..;
+
+			// Animation
+			rowColumnLayout -cs 1 5 -nc 2;
+				text -l "" -align "right" -w $label_width -h $label_height;
+				checkBox -v $fbxum_animation -l "Export Animation" -h $label_height -cc "fbxum_animationSwitch" fbxum_ui_animation;
+				text -l "" -align "right" -w $label_width -h $label_height;
+				text -l "" -align "left" -h $label_height -font "obliqueLabelFont" fbxum_ui_animationText;
+			setParent..;
+
+			// Animation Start/End
+			rowColumnLayout -nr 1 -cs 1 5;
+				text -l "Start/End" -align "right" -w $label_width -h $label_height fbxum_ui_animationLabel;
+				floatField -v $fbxum_start -minValue -100000 -maxValue 100000 -step 1 -pre 0 -w 110 -h $label_height fbxum_ui_start;
+				floatField -v $fbxum_end -minValue -100000 -maxValue 100000 -step 1 -pre 0 -w 110 -h $label_height fbxum_ui_end;
+			setParent..;
+
+			// Location
+			rowColumnLayout -nr 2 -cs 1 5;
+				button -l "Set Export Folder" -ebg 0 -h $label_height -w 300 -c "fbxum_fileLocation;";
+				text -l $short_location -align "center" -w 300 -h $label_height -font "obliqueLabelFont" -rs true -wordWrap true fbxum_ui_location;
+			setParent..;
+
+			rowColumnLayout -nr 1 -cs 1 6 -ro 1 "bottom" 5;
+				button -l "Save Settings" -w 147 -h $label_height -c "fbxum_savePrefs; deleteUI -window fbxum_window";
+				button -l "Export" -w 147 -h $label_height -c "fbxum_export;";
+			setParent..;
+
+		setParent ..;
+	setParent ..;
+
+	showWindow;
+
+	fbxum_animationSwitch();
+	fbxum_updateAnimationName();
+	fbxum_image();
+}
+
+global proc fbxum_fileLocation() {
+	global string $fbxum_location;
+	global string $fbxum_ui_actor;
+
+	if ($fbxum_location == "") {
+		$fbxum_location = `workspace -q -dir`;
+	}
+
+	string $fileFilter = "*.fbx";
+
+	string $folder[] = `fileDialog2
+		-dialogStyle 2
+		-caption "Set Export Folder"
+		-dir $fbxum_location
+		-fileFilter $fileFilter
+		-fm 0`;
+
+	if (size($folder))
+	{
+		$fbxum_location = dirname($folder[0]);
+
+		int $loc_size = size($fbxum_location);
+		string $short_location;
+		if ($loc_size > 40)
+			$short_location = "..." + substring($fbxum_location, $loc_size - 40, $loc_size);
+		else
+			$short_location = $fbxum_location;
+
+		text -edit -l $short_location fbxum_ui_location;
+
+		string $filename = basenameEx($folder[0]);
+		string $regex = "Prop@";
+		string $result = `substitute $regex $filename ""`;
+		textField -e -tx $result fbxum_ui_filename;
+	}
+}
+
+global proc fbxum_updateAnimationName() {
+	string $name = "Prop@" + `textField -q -text fbxum_ui_filename`;
+	text -e -l $name fbxum_ui_animationText;
+}
+
+global proc fbxum_animationSwitch() {
+	int $enable = `checkBox -q -v fbxum_ui_animation`;
+
+	string $labels[] = {"fbxum_ui_animationText", "fbxum_ui_animationLabel"};
+	string $fields[] = {"fbxum_ui_start", "fbxum_ui_end"};
+
+	for ($i = 0; $i < size($labels); ++$i) {
+		text -e -en $enable $labels[$i];
+	}
+
+	for ($i = 0; $i < size($fields); ++$i) {
+		floatField -e -en $enable $fields[$i];
+	}
+}
+
+global proc fbxum_export() {
+	global string $fbxum_location;
+	global string $fbxum_ui_actor;
+
+	// Get values
+	float $start = `floatField -q -v fbxum_ui_start`;
+	float $end = `floatField -q -v fbxum_ui_end`;
+	string $filename = basenameEx(`textField -q -tx fbxum_ui_filename`);
+	int $animation = `checkBox -q -v fbxum_ui_animation`;
+
+	// Check selection
+	string $selection[] = `ls -selection`;
+
+	if ( !( size($selection) ) ) {
+		confirmDialog
+			-title "Missing Selection"
+			-message "Nothing is selected.\n\nPlease select an object to export."
+			-ma "left"
+			-icon "information"
+			-button "OK"
+			-defaultButton "OK"
+			-cancelButton "OK";
+
+		return; // Stop the procedure
+	}
+
+	// Check all required fields
+	if ( !( size($filename) ) ) {
+		confirmDialog
+			-title "Missing Filename"
+			-message "Please enter a filename."
+			-ma "left"
+			-icon "warning"
+			-button "OK"
+			-defaultButton "OK"
+			-cancelButton "OK";
+
+		return; // Stop the procedure
+	}
+
+	if ($start > $end) {
+		confirmDialog
+			-title "Verify Animation Start/End"
+			-message "It appears your start frame is after your end frame.\n\nPlease change this."
+			-ma "left"
+			-icon "information"
+			-button "OK"
+			-defaultButton "OK"
+			-cancelButton "OK";
+
+		return;
+	}
+
+	string $unit = `currentUnit -q -l`;
+	float $scale_factor = 1;
+
+	if ( $unit != "m" ) {
+
+		$confirm = `confirmDialog -t "Your scene is not in meters!"
+			-message "Would you like me to change it for you?\n"
+			-button "Yes, please"
+			-button "Cancel"
+			-defaultButton "Yes, please"
+			-cancelButton "Cancel"
+			-dismissString "Cancel"
+			-icn "information"`;
+
+		if ( $confirm == "Yes, please" ) {
+			currentUnit -l "m";
+			$unit = "m";
+		} else {
+			return;
+		}
+	}
+
+	float $p_ast;
+	float $p_aet;
+	float $p_min;
+	float $p_max;
+
+	if ( $animation ) {
+		undoInfo -stateWithoutFlush false;
+
+		// Change playback options to modify start/end
+		$p_ast = `playbackOptions -q -ast`;
+		$p_aet = `playbackOptions -q -aet`;
+		$p_min = `playbackOptions -q -min`;
+		$p_max = `playbackOptions -q -max`;
+		playbackOptions -ast $start -aet $end;
+		$filename = "Prop@" + $filename;
+	}
+
+	// Export the file
+	string $file = $fbxum_location + "/" + $filename + ".fbx";
+
+	// Export Properties
+	FBXProperty Export|IncludeGrp|Animation -v $animation;
+	FBXExportAnimationOnly -v 0;
+	FBXExportBakeComplexAnimation -v $animation;
+	FBXExportBakeComplexStart -v $start;
+	FBXExportBakeComplexEnd -v $end;
+	FBXExportBakeComplexStep -v 1;
+	FBXExportBakeResampleAnimation -v 1;
+	FBXExportUseSceneName -v 1;
+
+	// Define animation takes
+	FBXExportSplitAnimationIntoTakes -c;
+	// FBXExportSplitAnimationIntoTakes -v $animation $start $end;
+
+	FBXExportCameras -v 0;
+	FBXExportConstraints -v 0;
+	FBXExportLights -v 0;
+	FBXExportSmoothMesh -v 1;
+	FBXExportShapes -v 1;
+	FBXExportSkins -v 1;
+	FBXExportSkeletonDefinitions -v 0;
+	FBXExportInputConnections -v 1;
+	FBXExportScaleFactor $scale_factor; // float
+	FBXExportConvertUnitString $unit;
+	FBXExportReferencedAssetsContent -v 1;
+	FBXExportFileVersion -v "FBX201400";
+
+	// Export
+	FBXExport -f $file -s;
+	print ("\nFBX export: " + $file);
+
+	// Set playback options back to default
+	if ( $animation )
+	{
+		playbackOptions -ast $p_ast -aet $p_aet -min $p_min -max $p_max;
+		undoInfo -stateWithoutFlush true;
+	}
+}
+
+global proc fbxum_image() {
+	// Find path of script
+	string $result = `whatIs FBXExportUnityModel`;
+	string $tokens[];
+	tokenize $result " " $tokens;
+	string $image_src = dirname($tokens[4]) + "/" + "FBXExportUnityModel.png";
+
+	image -e -image $image_src fbxum_ui_image;
+}

@@ -1,0 +1,47 @@
+// --------------------------------------------------------------------
+// NEXT FRAME NO HISTORY
+// --------------------------------------------------------------------
+
+// Turns undo off without flushing the queue,
+undoInfo -stateWithoutFlush false;
+
+// If within timeline, go to next, else go to beginning
+if (`currentTime -q` < `playbackOptions -q -maxTime`) {
+	nextOrPreviousFrame "next";
+} else {
+	currentTime(`playbackOptions -q -minTime`);
+}
+
+undoInfo -stateWithoutFlush true;
+
+
+// --------------------------------------------------------------------
+// PREVIOUS FRAME NO HISTORY
+// --------------------------------------------------------------------
+ // Turns undo off without flushing the queue,
+undoInfo -stateWithoutFlush false;
+
+// If within timeline, go to previous, else go to end
+if (`currentTime -q` > `playbackOptions -q -minTime`) {
+	nextOrPreviousFrame "previous";
+} else {
+	currentTime(`playbackOptions -q -maxTime`);
+}
+
+undoInfo -stateWithoutFlush true;
+
+
+// --------------------------------------------------------------------
+// NEXT KEY NO HISTORY
+// --------------------------------------------------------------------
+undoInfo -stateWithoutFlush false; // Turns undo off without flushing the queue,
+currentTime -edit `findKeyframe -timeSlider -which next`; // goes to next key frame and
+undoInfo -stateWithoutFlush true; // turns undo back on without flushing the queue.
+
+
+// --------------------------------------------------------------------
+// PREVIOUS FRAME NO HISTORY
+// --------------------------------------------------------------------
+undoInfo -stateWithoutFlush false; // Turns undo off without flushing the queue,
+currentTime -edit `findKeyframe -timeSlider  -which previous`; // goes to previous key frame and
+undoInfo -stateWithoutFlush true; // turns undo back on without flushing the queue.

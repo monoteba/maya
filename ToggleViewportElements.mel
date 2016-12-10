@@ -1,0 +1,64 @@
+proc string getActiveModelPanel()
+{
+	string $activeModelPanel = "";
+
+	// First get the panel that currently has focus
+	string $panel = `getPanel -wf`;
+
+	// Compare the panel's type to confirm it is a "modelPanel"
+	if ( "modelPanel" == `getPanel -to $panel` )
+	{
+		$activeModelPanel = $panel;
+	}
+
+	return $activeModelPanel;
+}
+
+string $activeModelPanel = getActiveModelPanel();
+if ( "" != $activeModelPanel )
+{
+	modelEditor -e -allObjects false $activeModelPanel;
+	modelEditor -e -polymeshes true $activeModelPanel;
+	/*
+	modelEditor -e
+		-nurbsCurves true
+		-nurbsSurfaces true
+		-controlVertices true
+		-polymeshes true
+		-subdivSurfaces true
+		-planes true
+		-lights true
+		-cameras true
+		-imagePlane true
+		-joints true
+		-ikHandles true
+		-deformers true
+		-dynamics true
+		-particleInstancers true
+		-fluids true
+		-hairSystems true
+		-follicles true
+		-nCloths true
+		-nParticles true
+		-nRigids true
+		-dynamicConstraints true
+		-locators true
+		-dimensions true
+		-pivots true
+		-handles true
+		-textures true
+		-strokes true
+		-motionTrails true
+		-pluginShapes true
+		-clipGhosts true
+		-greasePencils true
+		-pluginObjects gpuCacheDisplayFilter true
+		// ---------------
+		-manipulators true
+		-grid true
+		-hud true
+		-hos true
+		-sel true
+		$activeModelPanel;
+		*/
+}

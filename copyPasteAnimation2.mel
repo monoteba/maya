@@ -1,0 +1,48 @@
+string $objects1 = `ls -sl`;
+string $objects2 = `ls -sl`;
+
+proc CopyAnimationToObjects2() {
+    $offset = 100;
+    $start = 1;
+    $end = 100;
+
+    // string $objects1[];
+    // string $objects2[];
+    int $size = `size $objects1`;
+
+    // Reverse selection
+    /*
+    for ($n = 0; $n < $size; $n++) {
+        $objects1[( $size - 1 - $n)] = $selection[$n];
+    }
+    */
+
+    // Change these to make the eye look move
+    // $start = `findKeyframe -which first $objects1[0]`;
+    // $end = `findKeyframe -which last $objects1[0]`;
+
+    $range = string($start) + ":" + string($end);
+
+    for ( $n = 1; $n <= $size; $n++) {
+        // Prepare
+        $rand1 = int(rand($offset));
+        $rand2 = int(rand($offset));
+
+        $lower = $start + $rand1 - $offset / 2;
+        $upper = $end + $rand2 - $offset / 2;
+
+        // Do objects1
+        copyKey -t $range -clipboard "anim" $objects1[0];
+        pasteKey -t $start $object1[$n];
+        scaleKey -t $range -nst $lower -net $upper $objects1[$n];
+        snapKey $objects1[$n];
+
+        // Do objects2
+        copyKey -t $range -clipboard "anim" $objects2[0];
+        pasteKey -t $start $object2[$n];
+        scaleKey -t $range -nst $lower -net $upper $object2[$n];
+        snapKey $objects2[$n];
+    }
+}
+
+CopyAnimationToObjects2();

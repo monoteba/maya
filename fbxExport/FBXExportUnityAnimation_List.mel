@@ -1,0 +1,397 @@
+// --------------------------------------------------------------------
+// FBXExportUnityAnimation.mel
+// --------------------------------------------------------------------
+//
+// Author: Morten Dalgaard Andersen
+// Author URI: http://www.amorten.com
+//
+// License: GNU General Public License v2 or later
+// License URI: http://www.gnu.org/licenses/gpl-2.0.html
+//
+// Version: 1.0
+// Modified: 2015-03-03
+//
+// --------------------------------------------------------------------
+//
+// Instructions on how to use:
+//
+//  1.	Copy the script to the Maya script folder.
+//
+//  2.	Execute FBXExportUnityAnimation from the script editor.
+//
+
+
+// --------------------------------------------------------------------
+//                                                                   //
+//                    FBXExport Unity Animation                      //
+//                                                                   //
+// --------------------------------------------------------------------
+
+global proc FBXExportUnityAnimation () 
+{
+	if (`window -exists fbxua_window`)
+		fbxua_savePrefs();
+
+	fbxua_ui();
+}
+
+
+global proc fbxua_savePrefs() 
+{
+	// Get global variables in window
+	global float $fbxua_start; // animation start
+	global float $fbxua_end; // animation end
+	global string $fbxua_model; // model, Lou or Dawn
+	global string $fbxua_animation; // animation, Cycle_Walk etc.
+	global int $fbxua_animationOnly;
+	global string $fbxua_location; // export location
+
+	// Only set variables, if window exist
+	if (`window -exists fbxua_window`)
+	{
+		// Save values in Maya prefs options
+		optionVar -fv "fbxua_ov_start" `floatField -q -v fbxua_ui_start`;
+		optionVar -fv "fbxua_ov_end" `floatField -q -v fbxua_ui_end`;
+		optionVar -sv "fbxua_ov_model" `textField -q -tx fbxua_ui_model`;
+		optionVar -sv "fbxua_ov_animation" `textField -q -tx fbxua_ui_animation`;
+		optionVar -iv "fbxua_ov_animationOnly" `checkBox -q -v fbxua_ui_animationOnly`;
+		optionVar -sv "fbxua_ov_location" $fbxua_location;
+
+		// To know when prefs are saved
+		optionVar -iv "fbxua_ov_savedPrefs" 1;
+	}
+
+}
+
+// User Interface
+global proc fbxua_ui() 
+{
+	// Variables
+	global float $fbxua_start; // animation start
+	global float $fbxua_end; // animation end
+	global string $fbxua_model; // model, Lou or Dawn
+	global string $fbxua_animation; // animation, Cycle_Walk etc.
+	global int $fbxua_animationOnly;
+	global string $fbxua_location; // export location
+	global string $fbxua_ui_actor; // option menu
+	global string $fbxua_clipLayout;
+
+	// If settings have been saved
+	if (`optionVar -q "fbxua_ov_savedPrefs"`)
+	{
+		optionVar -iv "fbxua_ov_savedPrefs" 1;
+
+		// Query option variables
+		$fbxua_start = `optionVar -q "fbxua_ov_start"`;
+		$fbxua_end = `optionVar -q "fbxua_ov_end"`;
+		$fbxua_model = `optionVar -q "fbxua_ov_model"`;
+		$fbxua_animation = `optionVar -q "fbxua_ov_animation"`;
+		$fbxua_animationOnly = `optionVar -q "fbxua_ov_animationOnly"`;
+		$fbxua_location = `optionVar -q "fbxua_ov_location"`;
+	}
+	else
+	{
+		// Set default values
+		$fbxua_start = `playbackOptions -q -animationStartTime`;
+		$fbxua_end = `playbackOptions -q -animationEndTime`;
+		$fbxua_model = "";
+		$fbxua_animation = "";
+		$fbxua_animationOnly = 0;
+		$fbxua_location = `workspace -q -dir`;
+	}
+
+	// Remove window and prefs if exist
+	if ( `window -exists fbxua_window`) {
+		deleteUI -window fbxua_window;
+	}
+
+	if ( `windowPref -exists fbxua_window`) {
+		windowPref -remove fbxua_window;
+	}
+
+	// Create the window
+	global string $fbxua_window;
+	$fbxua_window = `window
+		-t "FBX Export Animation for Unity"
+		-s false
+		-rtf true
+		fbxua_window`;
+
+	int $loc_size = size($fbxua_location);
+	string $short_location;
+	if ($loc_size > 40)
+		$short_location = "..." + substring($fbxua_location, $loc_size - 40, $loc_size);
+	else
+		$short_location = $fbxua_location;
+
+	// Setup the window layout
+	int $label_width = 70;
+	int $lf = 225; // large field
+	int $mf = 130; // medium field
+	int $sf = 40; // small field
+	int $label_height = 26;
+
+	rowColumnLayout -nr 1;
+		columnLayout -rs 5 -co "both" 5;
+
+			// Character
+			rowColumnLayout -nr 1 -cs 1 5 -ro 1 "top" 5;
+				text -l "Actor" -align "right" -w $label_width -h $label_height;
+				string $fbxua_ui_actor = `optionMenu -l "" -h $label_height -w $lf fbxua_ui_actor`;
+			setParent..;
+
+			// Animation Start/End
+			rowColumnLayout -nr 1 -cs 1 5;
+				text -l "Start/End" -align "right" -w $label_width -h $label_height;
+				floatField -v $fbxua_start -minValue -100000 -maxValue 100000 -step 1 -pre 2 -w 80 -h $label_height fbxua_ui_start;
+				floatField -v $fbxua_end -minValue -100000 -maxValue 100000 -step 1 -pre 2 -w 80 -h $label_height fbxua_ui_end;
+			setParent..;
+
+			// Model
+			rowColumnLayout -nr 1 -cs 1 5;
+				text -l "Model" -align "right" -w $label_width -h $label_height;
+				textField -text $fbxua_model -pht "e.g. Lou" -w $lf -h $label_height fbxua_ui_model;
+			setParent..;
+
+			// Animation Clips layout
+			$fbxua_clipLayout = `rowColumnLayout -nc 1 -rs 1 5`;				
+
+			// Add clip
+			rowColumnLayout -cs 1 5 -nr 1;
+				text -l "" -w $label_width -h $label_height;
+				button -l "Add Clip" -ebg 0 -h $label_height -w $lf -c "fbxua_addClip";
+			setParent..;
+
+			// Animation Only
+			rowColumnLayout -cs 1 5 -nr 1;
+				text -l "" -align "right" -w $label_width -h $label_height;
+				checkBox -v $fbxua_animationOnly -l "Only Export Animation" fbxua_ui_animationOnly;
+			setParent..;
+
+			// Location
+			rowColumnLayout -nr 2 -cs 1 5;
+				button -l "Set Export Folder" -ebg 0 -h $label_height -w 300 -c "fbxua_fileLocation;";
+				text -l $short_location -align "center" -w 300 -h $label_height -font "smallObliqueLabelFont" -rs true -wordWrap true fbxua_ui_location;
+			setParent..;
+
+			rowColumnLayout -nr 1 -cs 1 6 -ro 1 "bottom" 5;
+				button -l "Close" -w 147 -h $label_height -c "fbxua_savePrefs; deleteUI -window fbxua_window";
+				button -l "Export" -w 147 -h $label_height -c "fbxua_export;";
+			setParent..;
+
+		setParent ..;
+	setParent ..;
+
+	// Build actor menu
+	fbxua_characterMenu();
+
+	showWindow;
+}
+
+global proc fbxua_addClip() 
+{
+	global string $fbxua_clipLayout;
+	global string $fbxua_clipList;
+
+	// Layout variables
+	int $label_width = 70;
+	int $lf = 225; // large field
+	int $mf = 130; // medium field
+	int $sf = 40; // small field
+	int $label_height = 26;
+
+	// Variables
+	string $name = "Clip2";
+	string $animation = "";
+	float $start = 1;
+	float $end = 24;
+
+	// Create Node
+	createNode -name "Clip1" -parent "AnimationClips" "animationclip";
+	addAttr -ln "ClipName" -sn "name" -dt "string";
+	addAttr -ln "StartFrame" -sn "start" -at "float";
+	addAttr -ln "EndFrame" -sn "end" -at "float";
+
+	// Add row
+	setParent $fbxua_clipLayout;
+	$fbxua_clip = `rowColumnLayout -nr 1 -cs 1 5`;
+		text -l $name -align "right" -w $label_width -h $label_height;
+		textField -text $animation -pht "e.g. Cycle_Walk" -w $mf -h $label_height;
+		floatField -v $start -w $sf -step 1 -minValue 0 -maxValue 9999 -h $label_height;
+		floatField -v $end -w $sf -step 1 -minValue 0 -maxValue 9999 -h $label_height;
+}
+
+global proc fbxua_removeClip() 
+{
+
+}
+
+global proc fbxua_clipNodesSetup()
+{
+	// Create AnimationClip node and populate it
+	if( !`objExists "AnimationClips"` ) 
+	{
+		group -empty -name "AnimationClips";
+	}
+	
+	// Loop through object to setup
+	fbxua_addClip();
+}
+
+global proc fbxua_characterMenu()
+{
+	global string $fbxua_ui_actor;
+
+	// Clear menu items
+	string $menuItems[] = `optionMenu -q -ill $fbxua_ui_actor`;
+	int $size = size($menuItems);
+
+	if ($size > 0) 
+	{
+		for ($i = 0; $i < $size; ++$i)
+		{
+			deleteUI -menuItem $menuItems[$i];
+		}
+	}
+
+	// Rebuild menu items
+	string $actors[] = `ls -as "*:*Actor*"`;
+	fbxua_addActor($actors);
+
+	string $actors[] = `ls -as "*Actor*"`;
+	fbxua_addActor($actors);
+
+	string $actors[] = `ls -as "*:*actor*"`;
+	fbxua_addActor($actors);
+
+	string $actors[] = `ls -as "*actor*"`;
+	fbxua_addActor($actors);
+}
+
+global proc fbxua_addActor(string $actors[]) {
+	global string $fbxua_ui_actor;
+
+	int $size = size($actors);
+
+	if ($size > 0) 
+	{
+		for ($i = 0; $i < $size; ++$i)
+		{
+			menuItem -parent $fbxua_ui_actor -label $actors[$i];
+		}
+	}
+}
+
+global proc fbxua_fileLocation() {
+	global string $fbxua_location;
+	global string $fbxua_ui_actor;
+
+	string $dir = `workspace -q -dir`;
+
+	string $folder[] = `fileDialog2
+		-dialogStyle 2
+		-caption "Set Export Folder"
+		-dir $dir
+		-fm 3`;
+
+	if (size($folder))
+	{	
+		$fbxua_location = $folder[0];
+
+		int $loc_size = size($fbxua_location);
+		string $short_location;
+		if ($loc_size > 40)
+			$short_location = "..." + substring($fbxua_location, $loc_size - 40, $loc_size);
+		else
+			$short_location = $fbxua_location;
+
+		text -edit -l $short_location fbxua_ui_location;
+	}
+}
+
+global proc fbxua_export()
+{
+	global string $fbxua_location;
+	global string $fbxua_ui_actor;
+
+	string $actor = `optionMenu -q -v $fbxua_ui_actor`;
+	string $selection[] = `ls -selection`;
+	select -r $actor;
+
+	// Current scene units
+	string $unit = `currentUnit -q -l`;
+
+	float $scale_factor = 1;
+	string $convert_unit = $unit;
+	
+	if ($unit == "m") {
+		$scale_factor = 1;
+		$convert_unit = "cm";
+		print "\n// Scale Factor = 100.00 (m to cm)\n";
+	} else if ($unit == "cm") {
+		$scale_factor = 1;
+		$convert_unit = "cm";
+		print "\n// Scale Factor = 1.00 (cm to cm)\n";
+	}
+
+	// Get values
+	float $start = `floatField -q -v fbxua_ui_start`;
+	float $end = `floatField -q -v fbxua_ui_end`;
+	string $model = basenameEx(`textField -q -tx fbxua_ui_model`);
+	string $animation = basenameEx(`textField -q -tx fbxua_ui_animation`);
+	int $animationOnly = `checkBox -q -v fbxua_ui_animationOnly`;
+
+	string $filename = $model + "@" + $animation;
+
+	if (size($filename)) 
+	{
+		string $file = $fbxua_location + "/" + $filename + ".fbx";
+
+		// Export Properties
+		FBXProperty Export|IncludeGrp|Animation -v 1;
+		FBXExportAnimationOnly -v $animationOnly;
+		FBXExportBakeComplexAnimation -v 1;
+		FBXExportBakeComplexStart -v $start;
+		FBXExportBakeComplexEnd -v $end;
+		FBXExportBakeComplexStep -v 1;
+		FBXExportBakeResampleAnimation -v 0;
+		FBXExportUseSceneName -v 1;
+
+		// Define animation takes
+		FBXExportSplitAnimationIntoTakes -c;
+		FBXExportSplitAnimationIntoTakes -v "ditto" 1 5;
+		FBXExportSplitAnimationIntoTakes -v "otto" 6 10;
+
+
+		FBXExportCameras -v 0;
+		FBXExportConstraints -v 0;
+		FBXExportLights -v 0;
+		FBXExportSmoothMesh -v 1;
+		FBXExportShapes -v 1;
+		FBXExportSkins -v 1;
+		FBXExportSkeletonDefinitions -v 0;
+		FBXExportInputConnections -v 1;
+		FBXExportScaleFactor $scale_factor; // float
+		FBXExportConvertUnitString $convert_unit;
+		FBXExportReferencedAssetsContent -v 1;
+		FBXExportFileVersion -v "FBX201400";
+
+		// Export
+		FBXExport -f $file -s;
+		print ("\nFBX export: " + $file);
+	}
+	else
+	{
+		confirmDialog 
+			-title "No Filename Specified" 
+			-message "Please enter a filename."
+			-ma "left"
+			-icon "warning"
+			-button "OK"
+			-defaultButton "OK"
+			-cancelButton "OK";
+	}
+
+	// Re-select old selection
+	select -r $selection;
+}

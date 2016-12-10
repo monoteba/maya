@@ -1,24 +1,8 @@
 import pymel.core as pm
+from mortentoo.helpers import main
 
 
-def undoable(function):
-    def undoFunction(*args, **kwargs):
-        pm.undoInfo(openChunk=True)
-        functionReturn = None
-        try:
-            functionReturn = function(*args, **kwargs)
-        
-        except:
-            print pm.sys.exc_info()[1]
-        
-        finally:
-            pm.undoInfo(closeChunk=True)
-            return functionReturn
-    
-    return undoFunction
-
-
-@undoable
+@main.undoable
 def cleanupCurves(stepped=False, tolerance=0.001):
     totalKeys = 0
     
@@ -37,7 +21,7 @@ def cleanupCurves(stepped=False, tolerance=0.001):
                     nextValue = keys[i + 1][1]
                     
                     if stepped and isclose(value, nextValue):
-                        toRemove.append(keys[i+1][0])
+                        toRemove.append(keys[i + 1][0])
                     elif isclose(value, nextValue) and isclose(nextValue, keys[i + 2][1]):
                         toRemove.append(keys[i + 1][0])
             

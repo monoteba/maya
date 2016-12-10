@@ -9,5 +9,5 @@ This is useful if you are animating a character and have randomly keyed various 
 
 ### Instructions
 1. Copy the script to the Maya script folder.
-2. Execute keyMarshal() from the script editor or add the command to a shelf button or hotkey.
+2. Execute `keyMarshal()` from the script editor or add the command to a shelf button or hotkey.
 3. Use the supplied icon for the shelf button if you like :)

@@ -6,17 +6,18 @@ Finds consecutive identical keys are removes the superflous ones. Currently work
 
 _Note: Does currently **not** take tangent direction into consideration._
 
-### Instructions
+### Installation
 
 1. Copy the script to Maya's script folder.
 2. Enter the following python command
 
-    ``` python 
+    ```python 
     import cleanupAnimationCurves as cac
     cac.cleanupCurves(False, 0.001)
     ```
 
 
-``` python 
+### Arguments
+```python 
 cleanupCurves(stepped=False, tolerance=0.001)
 ```

@@ -1,4 +1,4 @@
-# Key Marshal ![icon]( https://github.com/mortentoo/maya/raw/master/keyMarshal/icon/keyMarshal.png )
+# Key Marshal ![icon]( /icon/keyMarshal.png )
 
 ### Description
 

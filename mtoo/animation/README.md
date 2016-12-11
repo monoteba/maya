@@ -13,8 +13,8 @@ _Note: Does currently **not** take tangent direction into consideration._
 ### Usage
 
 ```python 
-import mtoo.animation.utils as too
-too.cleanupCurves(stepped=False, keepLast=True, tolerance=0.001)
+import mtoo.animation.utils as mtoo
+mtoo.cleanupCurves(stepped=False, keepLast=True, tolerance=0.001)
 ```
 
 

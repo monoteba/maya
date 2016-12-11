@@ -2,18 +2,18 @@
 
 ## Cleanup Curves
 
-`(mortentoo.animation.utils)`
+`(mtoo.animation.utils)`
 
 ### Description
 
-Finds consecutive identical keys are removes the superflous ones. Currently works best on tangents set to auto, linear or stepped.
+Finds consecutive identical keys and removes the superflous ones. Currently works best on tangents set to auto, linear or stepped.
 
 _Note: Does currently **not** take tangent direction into consideration._
 
 ### Usage
 
 ```python 
-import mortentoo.animation.utils as too
+import mtoo.animation.utils as too
 too.cleanupCurves(stepped=False, keepLast=True, tolerance=0.001)
 ```
 

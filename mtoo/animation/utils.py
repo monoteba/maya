@@ -1,5 +1,5 @@
 import pymel.core as pm
-from mortentoo.helpers import main
+from mtoo.helpers import main
 
 
 @main.undoable

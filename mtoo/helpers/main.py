@@ -2,6 +2,10 @@ import pymel.core as pm
 
 
 def undoable(function):
+    """
+     :return: return function
+    """
+    
     def undoFunction(*args, **kwargs):
         pm.undoInfo(openChunk=True)
         functionReturn = None

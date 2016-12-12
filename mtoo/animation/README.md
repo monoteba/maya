@@ -6,7 +6,7 @@
 
 ### Description
 
-Finds consecutive identical keys and removes the superflous ones. Currently works best on tangents set to auto, linear or stepped.
+Finds consecutive identical keys on selected objects and removes the superflous ones. Currently works best on tangents set to auto, linear or stepped.
 
 _Note: Does currently **not** take tangent direction into consideration._
 
@@ -21,7 +21,7 @@ mtoo.cleanupCurves(stepped=False, keepLast=True, tolerance=0.001)
 ##### stepped `=False`
 Remove all consecutive identical keys. If `False` it will only remove identical keys in between two matches.
 
-##### keepLast `=True` (only valid with `stepped=True`)
+##### keepLast `=True`
 Will keep the last keyframe even if it is identical to the previous.
 
 ##### tolerance `=0.001`

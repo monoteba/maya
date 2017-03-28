@@ -1,6 +1,12 @@
 # Animation Modules
 
----
+## Functions
+
+- `cleanupCurves(*args)`
+- `graphEditorFramePlaybackRange()`
+
+
+
 ## Cleanup Curves
 
 `(mtoo.animation.utils)`
@@ -28,9 +34,10 @@ Will keep the last keyframe even if it is identical to the previous.
 ##### tolerance `=0.001`
 If the difference between two keys is less than the tolerance, they will be removed.
 
----
+
+
 ## Graph Editor: Frame Playback Range
-Simple command that does the same as _View > Frame > Frame Playback Range_ in the _Graph Editor_.
+Simple command that does the same as _View > Frame > Frame Playback Range_ in the _Graph Editor_, but can be assigned to a hotkey.
 
 ### Usage
 

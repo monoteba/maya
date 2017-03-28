@@ -2,8 +2,8 @@
 
 ## Functions
 
-- `cleanupCurves(*args)`
-- `graphEditorFramePlaybackRange()`
+- `utils.cleanupCurves(*args)`
+- `utils.graphEditorFramePlaybackRange()`
 
   
 

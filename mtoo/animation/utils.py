@@ -46,3 +46,13 @@ def cleanupCurves(stepped=False, keepLast=True, tolerance=0.001):
     
     print "// {0} keys removed on ".format(totalKeys) + str([obj.name().encode() for obj in selection])
     return int(totalKeys)
+
+
+def graphEditorFramePlaybackRange():
+    """
+    Frame the current playback range in the Graph Editor
+    """
+    
+    start = pm.playbackOptions(q=True, minTime=True)
+    end = pm.playbackOptions(q=True, maxTime=True) + 1
+    pm.animView('graphView', startTime=start, endTime=end)

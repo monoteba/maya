@@ -26,3 +26,14 @@ Will keep the last keyframe even if it is identical to the previous.
 
 ##### tolerance `=0.001`
 If the difference between two keys is less than the tolerance, they will be removed.
+
+
+## Graph Editor: Frame Playback Range
+Simple command that does the same as _View > Frame > Frame Playback Range_ in the _Graph Editor_.
+
+### Usage
+
+```python 
+import mtoo.animation.utils as mtoo
+mtoo.graphEditorFramePlaybackRange()
+```

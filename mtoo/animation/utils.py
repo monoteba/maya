@@ -56,3 +56,4 @@ def graphEditorFramePlaybackRange():
     start = pm.playbackOptions(q=True, minTime=True)
     end = pm.playbackOptions(q=True, maxTime=True) + 1
     pm.animView('graphView', startTime=start, endTime=end)
+    

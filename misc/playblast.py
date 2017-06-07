@@ -32,5 +32,5 @@ filename = movieDir + filename[:-1] + ".mov"
 aPlayBackSliderPython = maya.mel.eval('$tmpVar=$gPlayBackSlider')
 sound = pm.timeControl(aPlayBackSliderPython, q=True, sound=True)
 
-# playblast!
+# playblast! 
 pm.animation.playblast(filename=filename, format="qt", compression="H.264", forceOverwrite=True, sequenceTime=False, clearCache=True, showOrnaments=False, offScreen=True, viewer=True, percent=100, quality=100, widthHeight=resolution, sound=sound)

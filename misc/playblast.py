@@ -18,12 +18,12 @@ movieDir = pm.workspace.fileRules['movie'] + "/"
 movieDir.replace('\\', '/')
 
 if modFileName:
-	# Regex example:
-	# Filename in the format "/my/path/sh_0010_ANI_workshop_0010.ma"
-	# is converted to "sh_0010_ANI"
-	pattern = re.compile('(?!\/)(.*?_.*?_.*?_)')
-	match = re.match(pattern, name)
-	filename = match.group(1)
+    # Regex example:
+    # Filename in the format "/my/path/sh_0010_ANI_workshop_0010.ma"
+    # is converted to "sh_0010_ANI"
+    pattern = re.compile('(?!\/)(.*?_.*?_.*?_)')
+    match = re.match(pattern, name)
+    filename = match.group(1)
 
 # assemble full path and filename
 filename = movieDir + filename[:-1] + ".mov"

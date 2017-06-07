@@ -22,7 +22,7 @@ if modFileName:
     # Filename in the format "/my/path/sh_0010_ANI_workshop_0010.ma"
     # is converted to "sh_0010_ANI"
     pattern = re.compile('(?!\/)(.*?_.*?_.*?_)')
-    match = re.match(pattern, name)
+    match = re.match(pattern, filename)
     filename = match.group(1)
 
 # assemble full path and filename

@@ -26,7 +26,7 @@ if modFileName:
     # is converted to "sh0010_ANI"
     pattern = re.compile('(?!\/)(.*?)_?([0-9]+)_(.*?)_')
     match = re.match(pattern, filename)
-    filename = match.group(1) + match.group(2) + '_' + match.group(3)
+    filename = match.group(1) + match.group(2)
 
 
 # assemble full path and filename

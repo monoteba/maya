@@ -23,7 +23,7 @@ movieDir.replace('\\', '/')
 if modFileName:
     # Regex example:
     # Filename in the format "/my/path/sh_0010_ANI_workshop_0010.ma"
-    # is converted to "sh0010_ANI"
+    # is converted to "sh0010"
     pattern = re.compile('(?!\/)(.*?)_?([0-9]+)_(.*?)_')
     match = re.match(pattern, filename)
     filename = match.group(1) + match.group(2)

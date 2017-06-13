@@ -33,7 +33,7 @@ if result == "Playblast":
 	# default paths
 	filename = os.path.splitext(os.path.basename(pm.system.sceneName()))[0]
 	movieDir = pm.workspace.fileRules['movie'] + "/"
-	movieDir.replace('\\', '/')
+	movieDir.replace('\\', '/') 
 
 	if modFileName:
 		# Regex example:

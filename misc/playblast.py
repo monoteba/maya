@@ -42,11 +42,19 @@ if modFileName:
 
 # prompt for postfix
 message = "Playblast camera:\n" + camName + "\n\nOutput name:\n" + filename + "\n\nFilename postfix (optional):"
-result = pm.promptDialog(title="Playblast", message=message, button=["Playblast","Cancel"], defaultButton="Playblast", cancelButton="Cancel", dismissString="Cancel")
+
+postfix = ""
+try:
+    postfix = pm.system.fileInfo['playblastPostfix']
+except:
+    pass
+
+result = pm.promptDialog(title="Playblast", message=message, button=["Playblast","Cancel"], defaultButton="Playblast", cancelButton="Cancel", dismissString="Cancel", text=postfix)
 
 
 if result == "Playblast":
     postfix = pm.promptDialog(q=True, text=True)
+    pm.system.fileInfo['playblastPostfix'] = postfix
 
     # get active sound in time slider
     aPlayBackSliderPython = maya.mel.eval('$tmpVar=$gPlayBackSlider')

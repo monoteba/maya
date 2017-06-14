@@ -15,17 +15,6 @@ import re
 import os
 
 
-# get camera name
-view = OpenMayaUI.M3dView.active3dView()
-camPath = OpenMaya.MDagPath()
-view.getCamera(camPath)  # returns camera shape node
-camShapeName = camPath.partialPathName()
-
-cam = camPath.transform()  # returns MObject
-OpenMaya.MDagPath.getAPathTo(cam, camPath)
-camName = camPath.partialPathName()
-
-
  # default paths
 filename = os.path.splitext(os.path.basename(pm.system.sceneName()))[0]
 movieDir = pm.workspace.fileRules['movie'] + "/"
@@ -38,6 +27,17 @@ if modFileName:
     pattern = re.compile('(?!\/)(.*?)_?([0-9]+)_(.*?)_')
     match = re.match(pattern, filename)
     filename = match.group(1) + match.group(2)
+
+
+# get camera name
+view = OpenMayaUI.M3dView.active3dView()
+camPath = OpenMaya.MDagPath()
+view.getCamera(camPath)  # returns camera shape node
+camShapeName = camPath.partialPathName()
+
+cam = camPath.transform()  # returns MObject
+OpenMaya.MDagPath.getAPathTo(cam, camPath)
+camName = camPath.partialPathName()
 
 
 # prompt for postfix

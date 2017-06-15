@@ -14,4 +14,4 @@ movieDir.replace('\\', '/')
 if platform.system() == 'darwin':
     webbrowser.open('file://' + movieDir) # MacOS
 else:
-webbrowser.open(movieDir) # Windows, Linux
+    webbrowser.open(movieDir) # Windows, Linux

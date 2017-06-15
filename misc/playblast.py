@@ -1,8 +1,7 @@
 '''
 Playblast using filename and H.264 compression
 
-Default regex replacement pattern is:
-	(?!\/)(.*?)_?([0-9]+)_(.*?)_
+Default regex replacement pattern is: (?!\/)(.*?)_?([0-9]+)_(.*?)_
 '''
 
 # OPTIONS

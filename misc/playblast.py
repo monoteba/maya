@@ -1,8 +1,11 @@
-#
-# Playblast using filename and H.264 compression
-#
+'''
+Playblast using filename and H.264 compression
 
-# options
+Default regex replacement pattern is:
+	(?!\/)(.*?)_?([0-9]+)_(.*?)_
+'''
+
+# OPTIONS
 resolution = [1920,1080] # playblast resolution
 modFileName = True # do a regex search to replace filename, see example below
 

@@ -20,14 +20,6 @@ filename = os.path.splitext(os.path.basename(pm.system.sceneName()))[0]
 movieDir = pm.workspace.fileRules['movie'] + "/"
 movieDir.replace('\\', '/')
 
-if modFileName:
-    # Regex example:
-    # Filename in the format "/my/path/sh_0010_ANI_workshop_0010.ma"
-    # is converted to "sh0010_ANI"
-    pattern = re.compile('(?!\/)(.*?)_?([0-9]+)_(.*?)_')
-    match = re.match(pattern, filename)
-    filename = match.group(1) + match.group(2)
-
 
 # get camera name
 view = OpenMayaUI.M3dView.active3dView()
@@ -41,28 +33,41 @@ camName = camPath.partialPathName()
 
 
 # prompt for postfix
-message = "Playblast camera:\n" + camName + "\n\nOutput name:\n" + filename + "\n\nFilename postfix (optional):"
+message = "Playblast camera:\n" + camName + "\n\nFilename:"
 
-postfix = ""
+filneame = ""
 try:
-    postfix = pm.system.fileInfo['playblastPostfix']
+    filename = pm.system.fileInfo['playblastFilename']
 except:
     pass
 
-result = pm.promptDialog(title="Playblast", message=message, button=["Playblast","Cancel"], defaultButton="Playblast", cancelButton="Cancel", dismissString="Cancel", text=postfix)
+if filename is "":
+    
+if modFileName:
+    # Regex example:
+    # Filename in the format "/my/path/sh_0010_ANI_workshop_0010.ma"
+    # is converted to "sh0010"
+    pattern = re.compile('(?!\/)(.*?)_?([0-9]+)_(.*?)_')
+    match = re.match(pattern, filename)
+    filename = match.group(1) + match.group(2)
+    
+result = pm.promptDialog(title="Playblast", message=message, button=["Playblast","Cancel"], defaultButton="Playblast", cancelButton="Cancel", dismissString="Cancel", text=filename)
 
 
 if result == "Playblast":
-    postfix = pm.promptDialog(q=True, text=True)
-    pm.system.fileInfo['playblastPostfix'] = postfix
+    newName = pm.promptDialog(q=True, text=True)
+    
+    if newName is not "":
+        filename = newName
+    
+    pm.system.fileInfo['playblastFilename'] = filename
 
     # get active sound in time slider
     aPlayBackSliderPython = maya.mel.eval('$tmpVar=$gPlayBackSlider')
     sound = pm.timeControl(aPlayBackSliderPython, q=True, sound=True)
 
-
     # assemble full path and filename
-    filename = movieDir + filename + postfix + ".mov"
+    filename = movieDir + filename + ".mov"
 
     # disable resolution gate
     resGateEnabled = pm.getAttr(camShapeName + ".displayResolution")

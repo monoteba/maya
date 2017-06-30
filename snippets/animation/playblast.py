@@ -4,7 +4,6 @@
 
 # options
 resolution = [1920,1080] # playblast resolution
-modFileName = True # do a regex search to replace filename, see example below
 
 
 import maya.mel
@@ -42,8 +41,6 @@ except:
     pass
 
 if filename is "":
-    
-if modFileName:
     # Regex example:
     # Filename in the format "/my/path/sh_0010_ANI_workshop_0010.ma"
     # is converted to "sh0010"
@@ -52,7 +49,6 @@ if modFileName:
     filename = match.group(1) + match.group(2)
     
 result = pm.promptDialog(title="Playblast", message=message, button=["Playblast","Cancel"], defaultButton="Playblast", cancelButton="Cancel", dismissString="Cancel", text=filename)
-
 
 if result == "Playblast":
     newName = pm.promptDialog(q=True, text=True)

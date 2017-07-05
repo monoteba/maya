@@ -2,7 +2,7 @@ import pymel.core as pm
 from random import randint
 
 
-def offsetKeys(offsetMin, offsetMax, moveFirst=False):
+def offsetKeys(offsetMin, offsetMax, moveFirstObject=False):
 	"""
 	Offsets each object in the selection progressively in selected order, meaning the first object is offset a little, the second more, and third even more. Offset is randomized between offsetMin and offsetMax.
 	:param offsetMin: minimum offset
@@ -12,7 +12,7 @@ def offsetKeys(offsetMin, offsetMax, moveFirst=False):
 	lastOffset = 0
 
 	# remove first item
-	if moveFirst is False:
+	if moveFirstObject is False:
 		del sl[0]
 
 	for o in sl:

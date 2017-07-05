@@ -21,4 +21,4 @@ def offsetKeys(offsetMin, offsetMax, moveFirst=False):
 		pm.keyframe(o, e=True, time=(":"), relative=True, timeChange=offset)
 
 
-offsetKeys(0, 2, False)
+offsetKeys(0, 2, False) 

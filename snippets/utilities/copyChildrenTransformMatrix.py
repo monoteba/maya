@@ -22,14 +22,14 @@ if len(sl) != 2:
     print "Must select exactly two groups"
     
 else:
-    listA = listA = pm.listRelatives(sl[0], children=True, typ="transform")
-    listB = listA = pm.listRelatives(sl[1], children=True, typ="transform")
+    sources = pm.listRelatives(sl[0], children=True, typ="transform")
+    targets = pm.listRelatives(sl[1], children=True, typ="transform")
         
     transforms = []
-    for o in listA:
+    for o in sources:
         transforms.append(pm.xform(o, q=True, matrix=True))
     
     
-    for o, t in zip(listB, transforms):
+    for o, t in zip(targets, transforms):
         pm.xform(o, matrix=t)
 	

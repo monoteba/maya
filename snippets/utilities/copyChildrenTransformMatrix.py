@@ -25,7 +25,7 @@ else:
     listA = listA = pm.listRelatives(sl[0], children=True, typ="transform")
     listB = listA = pm.listRelatives(sl[1], children=True, typ="transform")
         
-    
+    transforms = []
     for o in listA:
         transforms.append(pm.xform(o, q=True, matrix=True))
     

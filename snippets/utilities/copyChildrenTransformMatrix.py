@@ -32,3 +32,4 @@ else:
     
     for o, t in zip(listB, transforms):
         pm.xform(o, matrix=t)
+	

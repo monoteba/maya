@@ -1,4 +1,4 @@
-'''
+"""
 Copies the transform matrix of children in one group to the children of another group.
 
 Example, selecting groupA and then groupB, will make sphere1 have the same transform as cube1, sphere2 the same as cube2 etc.
@@ -11,7 +11,7 @@ groupB
 	- sphere1
 	- sphere2
 	- sphere3
-'''
+"""
 
 import pymel.core as pm
 

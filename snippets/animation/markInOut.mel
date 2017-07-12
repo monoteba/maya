@@ -3,7 +3,7 @@
 // mark in
 if (int(`playbackOptions -q -min`) == int(`currentTime -q`)) {
     playbackOptions -min `playbackOptions -q -ast`;
-} else {
+} else if (int(`playbackOptions -q -ast`) != int(`currentTime -q`) && (int(`playbackOptions -q -aet`) != int(`currentTime -q`) {
     playbackOptions -min `currentTime -q`;    
 }
 
@@ -11,7 +11,7 @@ if (int(`playbackOptions -q -min`) == int(`currentTime -q`)) {
 // mark out
 if (int(`playbackOptions -q -max`) == int(`currentTime -q`)) {
     playbackOptions -max `playbackOptions -q -aet`;
-} else {
+} else if (int(`playbackOptions -q -ast`) != int(`currentTime -q`) && (int(`playbackOptions -q -aet`) != int(`currentTime -q`) {
     playbackOptions -max `currentTime -q`;    
 }
 

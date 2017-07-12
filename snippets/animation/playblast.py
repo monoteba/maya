@@ -47,7 +47,9 @@ if filename is "":
     filename = os.path.splitext(os.path.basename(pm.system.sceneName()))[0]
     pattern = re.compile('(?!\/)(.*?)_?([0-9]+)_(.*?)_')
     match = re.match(pattern, filename)
-    filename = match.group(1) + match.group(2)
+    
+    if match is not None:
+		filename = match.group(1) + match.group(2)
 
     
 result = pm.promptDialog(title="Playblast", message=message, button=["Playblast","Cancel"], defaultButton="Playblast", cancelButton="Cancel", dismissString="Cancel", text=filename)

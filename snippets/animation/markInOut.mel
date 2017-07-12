@@ -1,0 +1,13 @@
+// mark in
+if (int(`playbackOptions -q -min`) == int(`currentTime -q`)) {
+    playbackOptions -min `playbackOptions -q -ast`;
+} else {
+    playbackOptions -min `currentTime -q`;    
+}
+
+// mark out
+if (int(`playbackOptions -q -max`) == int(`currentTime -q`)) {
+    playbackOptions -max `playbackOptions -q -aet`;
+} else {
+    playbackOptions -max `currentTime -q`;    
+}

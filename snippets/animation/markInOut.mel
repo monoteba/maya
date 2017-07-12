@@ -11,3 +11,6 @@ if (int(`playbackOptions -q -max`) == int(`currentTime -q`)) {
 } else {
     playbackOptions -max `currentTime -q`;    
 }
+
+// clear
+playbackOptions -min `playbackOptions -q -ast` -max `playbackOptions -q -aet`;

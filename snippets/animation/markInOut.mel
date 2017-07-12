@@ -1,3 +1,5 @@
+// Markout time on timeline based on current time
+
 // mark in
 if (int(`playbackOptions -q -min`) == int(`currentTime -q`)) {
     playbackOptions -min `playbackOptions -q -ast`;

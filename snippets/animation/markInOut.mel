@@ -1,4 +1,4 @@
-// Markout time on timeline based on current time
+// Mark in/out on time slider based on current frame. Assign each command to a button or hotkey.
 
 // mark in
 if (int(`playbackOptions -q -min`) == int(`currentTime -q`)) {
@@ -7,12 +7,14 @@ if (int(`playbackOptions -q -min`) == int(`currentTime -q`)) {
     playbackOptions -min `currentTime -q`;    
 }
 
+
 // mark out
 if (int(`playbackOptions -q -max`) == int(`currentTime -q`)) {
     playbackOptions -max `playbackOptions -q -aet`;
 } else {
     playbackOptions -max `currentTime -q`;    
 }
+
 
 // clear
 playbackOptions -min `playbackOptions -q -ast` -max `playbackOptions -q -aet`;

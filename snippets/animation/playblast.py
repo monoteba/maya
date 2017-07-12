@@ -49,9 +49,9 @@ if filename is "":
     match = re.match(pattern, filename)
     
     if match is not None:
-		filename = match.group(1) + match.group(2)
+        filename = match.group(1) + match.group(2)
 
-    
+
 result = pm.promptDialog(title="Playblast", message=message, button=["Playblast","Cancel"], defaultButton="Playblast", cancelButton="Cancel", dismissString="Cancel", text=filename)
 
 if result == "Playblast":

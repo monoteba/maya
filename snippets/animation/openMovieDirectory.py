@@ -11,7 +11,8 @@ movieDir = pm.workspace(q=True, rootDirectory=True) + pm.workspace.fileRules['mo
 movieDir.replace('\\', '/')
 
 
-if platform.system() == 'darwin':
+if platform.system() == 'Darwin':
     webbrowser.open('file://' + movieDir) # MacOS
 else:
     webbrowser.open(movieDir) # Windows, Linux
+    

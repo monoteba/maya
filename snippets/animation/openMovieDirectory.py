@@ -14,5 +14,5 @@ movieDir.replace('\\', '/')
 if platform.system() == 'Darwin':
      subprocess.call(['open', movieDir])  # MacOS
 else:
-    webbrowser.open(movieDir)  # Windows, Linux
+     webbrowser.open(movieDir)  # Windows, Linux
     

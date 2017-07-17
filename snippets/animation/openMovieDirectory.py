@@ -1,4 +1,3 @@
-
 '''
 Open the "movie" directory of the current project
 '''
@@ -12,7 +11,7 @@ movieDir = pm.workspace(q=True, rootDirectory=True) + pm.workspace.fileRules['mo
 movieDir.replace('\\', '/')
 
 if platform.system() == 'Darwin':
-     subprocess.call(['open', movieDir])  # MacOS
+    subprocess.call(['open', movieDir])  # MacOS
 else:
-     webbrowser.open(movieDir)  # Windows, Linux
+    webbrowser.open(movieDir)  # Windows, Linux
     

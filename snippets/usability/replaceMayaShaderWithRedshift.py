@@ -1,6 +1,5 @@
 # maya scene with shader file to use - should be with forward slashes!
-shaderFilePath = 'L:/02_Projects/2029_ADV_Lego_DreamItBeIt/_LIB/LEGO_STANDARD_RS_SHADER.ma'
-#shaderFilePath = 'L:/02_Projects/2029_ADV_Lego_DreamItBeIt/_LIB/lego_glassTinted_RS_SHADER.ma'
+shaderFilePath = ''
 
 
 '''

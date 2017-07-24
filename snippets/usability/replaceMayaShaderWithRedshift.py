@@ -1,5 +1,5 @@
 '''
-Takes selected materials and replaces them with Redshift materials imported from file dialog window.
+Takes selected materials and replaces them with Redshift materials imported from shaderFilePath.
 
 Finds the gammaCorrect node attached to the Redshift material's "diffuse_color" attribute, and assigns it the color value of the selected material(s). If it does not find a gammaCorrect node, it simply assign the color of the material to the diffuse color of the Redshift material.
 
@@ -11,6 +11,7 @@ Finally, it assigns the Redshift material to the  objects the material was assig
 import pymel.core as pm
 import os
 
+# choose shader file to import
 shaderFilePath = pm.fileDialog2(caption='Import Redshift shader', dialogStyle=2, fileMode=1, fileFilter='Maya Files (*.ma *.mb);;Maya ASCII (*.ma);;Maya Binary (*.mb)')[0]
 
 # use filename as namespace

@@ -60,13 +60,17 @@ def maya2RedshiftShader():
 		sg = material.shadingGroups()
 		setMembers = pm.sets(sg, q=True)
 		pm.select(setMembers, r=True)
-		
+
+		if pm.ls(sl=True):
+			pm.hyperShade(assign=redshiftNode)
+
+		pm.select(pm.hyperShade(objects=material), r=True)
 		if pm.ls(sl=True):
 		    pm.hyperShade(assign=redshiftNode)
-		    
 		
+	
 	# select the imported redshift nodes
 	pm.select(redshiftNodes, r=True)
-	    
+	
 
 maya2RedshiftShader()

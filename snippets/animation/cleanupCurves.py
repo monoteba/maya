@@ -13,6 +13,9 @@ tolerance=0.001
 How large the difference needs to be for two keyframes to be considered equal. Setting the value to 0 may not produce expected results.
 '''
 
+import pymel.core as pm
+
+
 def isclose(a, b, epsilon=1e-09):
     """
     Compare two numbers for equality with supplied epsilon

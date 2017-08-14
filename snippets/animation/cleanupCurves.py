@@ -53,14 +53,14 @@ def cleanupCurves(stepped=False, keepLast=True, tolerance=0.001):
                 if i < count - 2:
                     nextValue = keys[i + 1][1]
                     
-                    if stepped and math.isclose(value, nextValue, tolerance):
+                    if stepped and isclose(value, nextValue, tolerance):
                         toRemove.append(keys[i + 1][0])
-                    elif math.isclose(value, nextValue, tolerance) \
-                            and math.isclose(nextValue, keys[i + 2][1], tolerance):
+                    elif isclose(value, nextValue, tolerance) \
+                            and isclose(nextValue, keys[i + 2][1], tolerance):
                         toRemove.append(keys[i + 1][0])
             
             if not keepLast and count > 1:
-                if math.isclose(keys[count - 1][1], keys[count - 2][1], tolerance):
+                if isclose(keys[count - 1][1], keys[count - 2][1], tolerance):
                     toRemove.append(keys[count - 1][0])
             
             if toRemove:

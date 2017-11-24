@@ -4,7 +4,7 @@ Exports all selected meshes as separate .obj files
 
 import maya.cmds as cmds
 
-def exportSelectedAsSeparateOBJ():
+def export_each_as_obj():
 	path = cmds.fileDialog2(caption='Select Export Folder', dialogStyle=2, fileMode=2)
 	
 	if not path:
@@ -33,4 +33,4 @@ def exportSelectedAsSeparateOBJ():
 	cmds.select(selection, r=True)
 
 
-exportSelectedAsSeparateOBJ()
+export_each_as_obj()

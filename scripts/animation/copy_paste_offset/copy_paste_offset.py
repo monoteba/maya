@@ -27,6 +27,6 @@ def copy_paste_offset():
 		for o in pm.ls(sl=True):
 			for k in sorted(list(set(pm.keyframe(o, q=True, timeChange=True, time=timeRange)))):
 				pm.copyKey(o, time=(k,k))
-				pm.pasteKey(o, time=(k,k), timeOffset=offset)
+				pm.pasteKey(o, time=(k,k), timeOffset=offset, option='merge')
 			
 copy_paste_offset()

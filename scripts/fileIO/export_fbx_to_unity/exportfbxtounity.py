@@ -25,7 +25,9 @@ import pymel.core as pm
 import maya.OpenMayaUI as omui
 import maya.OpenMaya as om
 import os
+import json
 
+qt_version = 5
 try:
     from PySide2.QtCore import *
     from PySide2.QtGui import *
@@ -35,6 +37,8 @@ except ImportError:
     from PySide.QtCore import *
     from PySide.QtGui import *
     from shiboken import wrapInstance
+    
+    qt_version = 4
 
 window = None
 
@@ -90,11 +94,29 @@ class ExportFbxToUnity(QMainWindow):
         self.start_input = QLineEdit()
         self.end_input = QLineEdit()
         
-        self.options_layout = QGridLayout()
+        self.animation_only_layout = QHBoxLayout()
+        self.animation_only_label = self.create_label('Animation only:')
         self.animation_only_checkbox = QCheckBox()
+        
+        self.bake_animation_layout = QGridLayout()
+        self.bake_animation_label = self.create_label('Bake animation:')
         self.bake_animation_checkbox = QCheckBox()
+        self.euler_filter_label = self.create_label('Apply euler filter')
         self.euler_filter_checkbox = QCheckBox()
+        self.has_stepped_label = self.create_label('Has stepped tangents')
         self.has_stepped_checkbox = QCheckBox()
+        
+        self.animation_clip_layout = QHBoxLayout()
+        self.animation_clip_label = self.create_label('Animation clips:')
+        self.animation_clip_checkbox = QCheckBox()
+        
+        self.clip_data = [["Take 001", pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)]]
+        header = ["Clip name", "Start", "End"]
+        self.table_model = AnimationClipTableModel(self, self.clip_data, header)
+        self.table_view = QTableView()
+        self.table_view.setModel(self.table_model)
+        self.add_clip_button = QPushButton('Add Clip')
+        self.remove_clip_button = QPushButton('Remove Selected Clips')
         
         # folder path for export
         self.export_dir = None
@@ -107,20 +129,19 @@ class ExportFbxToUnity(QMainWindow):
         self.create_window()
     
     def keyPressEvent(self, event):
-        # Prevent key press events to propagate to Maya
-        pass
+        pass  # Prevent key press events to propagate to Maya
     
     def hideEvent(self, event):
         if not self.isMinimized():
             self.close_window()
-            
+    
     def delete_instance(self):
         self.remove_callbacks()
         self.deleteLater()
-            
+    
     def after_open_file(self, *args):
         self.load_options()
-        
+    
     def remove_callbacks(self):
         om.MSceneMessage.removeCallback(self.open_callback)
         om.MSceneMessage.removeCallback(self.new_callback)
@@ -147,7 +168,6 @@ class ExportFbxToUnity(QMainWindow):
         )
         
         # create and arrange elements
-        
         inner_vertical_layout = QVBoxLayout()
         
         # file layout
@@ -224,15 +244,50 @@ class ExportFbxToUnity(QMainWindow):
                                              'tangents.')
         
         self.connect(self.bake_animation_checkbox, SIGNAL('toggled(bool)'), self.toggle_bake_animation)
+        self.connect(self.animation_clip_checkbox, SIGNAL('toggled(bool)'), self.toggle_animation_clip)
         
-        self.options_layout.addWidget(self.create_label('Animation only:'), 0, 0)
-        self.options_layout.addWidget(self.animation_only_checkbox, 0, 1)
-        self.options_layout.addWidget(self.create_label('Bake Animation:'), 1, 0)
-        self.options_layout.addWidget(self.bake_animation_checkbox, 1, 1)
-        self.options_layout.addWidget(self.create_label('Apply euler filter:'), 2, 0)
-        self.options_layout.addWidget(self.euler_filter_checkbox, 2, 1)
-        self.options_layout.addWidget(self.create_label('Has stepped tangents:'), 3, 0)
-        self.options_layout.addWidget(self.has_stepped_checkbox, 3, 1)
+        self.animation_only_layout.addWidget(self.animation_only_label)
+        self.animation_only_layout.addWidget(self.animation_only_checkbox)
+        
+        self.bake_animation_layout.addWidget(self.bake_animation_label, 0, 0)
+        self.bake_animation_layout.addWidget(self.bake_animation_checkbox, 0, 1)
+        self.bake_animation_layout.addWidget(self.euler_filter_label, 1, 0)
+        self.bake_animation_layout.addWidget(self.euler_filter_checkbox, 1, 1)
+        self.bake_animation_layout.addWidget(self.has_stepped_label, 2, 0)
+        self.bake_animation_layout.addWidget(self.has_stepped_checkbox, 2, 1)
+        
+        self.animation_clip_layout.addWidget(self.animation_clip_label)
+        self.animation_clip_layout.addWidget(self.animation_clip_checkbox)
+        
+        # animation clip table
+        table_layout = QVBoxLayout()
+        
+        self.table_view.setEditTriggers(QAbstractItemView.DoubleClicked |
+                                        QAbstractItemView.EditKeyPressed |
+                                        QAbstractItemView.AnyKeyPressed)
+        self.table_view.verticalHeader().setVisible(False)
+        
+        if qt_version == 5:
+            self.table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        else:
+            self.table_view.horizontalHeader().setResizeMode(0, QHeaderView.Stretch)
+        
+        self.table_view.setColumnWidth(1, 80)  # fixed width for start
+        self.table_view.setColumnWidth(2, 80)  # fixed width for end
+        table_layout.addWidget(self.table_view)
+        
+        # table add/remove buttons
+        table_button_layout = QHBoxLayout()
+        
+        self.add_clip_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.add_clip_button.setFixedHeight(button_small_height)
+        self.connect(self.add_clip_button, SIGNAL('clicked()'), self.add_clip)
+        self.remove_clip_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.remove_clip_button.setFixedHeight(button_small_height)
+        self.connect(self.remove_clip_button, SIGNAL('clicked()'), self.remove_clip)
+        
+        table_button_layout.addWidget(self.add_clip_button)
+        table_button_layout.addWidget(self.remove_clip_button)
         
         # export and close buttons
         button_layout = QHBoxLayout()
@@ -247,12 +302,18 @@ class ExportFbxToUnity(QMainWindow):
         # add widgets to inner layout
         inner_vertical_layout.addLayout(file_layout)
         inner_vertical_layout.addLayout(set_folder_layout)
-        inner_vertical_layout.addSpacerItem(QSpacerItem(1, 8, QSizePolicy.Maximum, QSizePolicy.Minimum))
+        inner_vertical_layout.addLayout(self.create_separator_layout())
         inner_vertical_layout.addLayout(time_layout)
         inner_vertical_layout.addLayout(start_end_layout)
-        inner_vertical_layout.addSpacerItem(QSpacerItem(1, 8, QSizePolicy.Maximum, QSizePolicy.Minimum))
-        inner_vertical_layout.addLayout(self.options_layout)
-        inner_vertical_layout.addStretch()
+        inner_vertical_layout.addLayout(self.create_separator_layout())
+        inner_vertical_layout.addLayout(self.animation_only_layout)
+        inner_vertical_layout.addLayout(self.create_separator_layout())
+        inner_vertical_layout.addLayout(self.bake_animation_layout)
+        inner_vertical_layout.addLayout(self.create_separator_layout())
+        inner_vertical_layout.addLayout(self.animation_clip_layout)
+        inner_vertical_layout.addLayout(table_layout)
+        inner_vertical_layout.addLayout(table_button_layout)
+        inner_vertical_layout.addSpacerItem(self.create_spacer_item(16))
         inner_vertical_layout.addLayout(button_layout)
         
         main_vertical_layout.addLayout(inner_vertical_layout)
@@ -261,6 +322,7 @@ class ExportFbxToUnity(QMainWindow):
         self.toggle_start_end()
         self.update_export_folder_path()
         self.toggle_bake_animation()
+        self.toggle_animation_clip(self.animation_clip_checkbox.isChecked())
     
     @staticmethod
     def create_label(text):
@@ -270,18 +332,36 @@ class ExportFbxToUnity(QMainWindow):
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         return label
     
+    @staticmethod
+    def create_spacer_item(height=8):
+        return QSpacerItem(1, height, QSizePolicy.Maximum, QSizePolicy.Fixed)
+    
+    @staticmethod
+    def create_separator_layout():
+        layout = QHBoxLayout()
+        frame = QFrame()
+        frame.setFrameShape(QFrame.HLine)
+        layout.addWidget(frame)
+        return layout
+    
     def toggle_start_end(self, checked=False):
-        start_end_checked = self.start_end_radio.isChecked()
-        self.start_end_label.setEnabled(start_end_checked)
-        self.start_input.setEnabled(start_end_checked)
-        self.end_input.setEnabled(start_end_checked)
+        checked = self.start_end_radio.isChecked()
+        self.start_end_label.setEnabled(checked)
+        self.start_input.setEnabled(checked)
+        self.end_input.setEnabled(checked)
     
     def toggle_bake_animation(self, checked=None):
         if checked is None:
             checked = self.bake_animation_checkbox.isChecked()
-        for row in range(2, 4):
-            for col in range(2):
-                self.options_layout.itemAtPosition(row, col).widget().setEnabled(checked)
+        self.euler_filter_label.setEnabled(checked)
+        self.euler_filter_checkbox.setEnabled(checked)
+        self.has_stepped_label.setEnabled(checked)
+        self.has_stepped_checkbox.setEnabled(checked)
+    
+    def toggle_animation_clip(self, checked):
+        self.table_view.setEnabled(checked)
+        self.add_clip_button.setEnabled(checked)
+        self.remove_clip_button.setEnabled(checked)
     
     def update_export_folder_path(self):
         if self.export_dir:
@@ -310,6 +390,39 @@ class ExportFbxToUnity(QMainWindow):
         self.export_dir = dialog_dir[0]
         self.set_folder_path_label.setText(self.export_dir)
     
+    def add_clip(self):
+        name = "Take %03d" % (len(self.clip_data) + 1)
+        self.clip_data.append([name, pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)])
+        self.table_view.model().layoutChanged.emit()
+    
+    def remove_clip(self):
+        selected_rows = sorted(set(index.row() for index in self.table_view.selectedIndexes()))
+        i = 0
+        
+        for row in selected_rows:
+            if len(self.clip_data) > 1:
+                del self.clip_data[row - i]
+                i += 1
+            elif len(self.clip_data) == 1:
+                self.clip_data.append(
+                    ["Take 001", pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)])
+                del self.clip_data[0]
+        
+        self.table_view.model().layoutChanged.emit()
+        
+    def load_clips(self):
+        try:
+            read_clips = pm.system.fileInfo['exportfbxtounity_clips']
+            if read_clips:
+                read_clips = read_clips.replace('\\"', '"')
+                self.clip_data = json.loads(read_clips)
+        except (RuntimeError, KeyError, ValueError):
+            pass
+        
+        # we have to re-assign the table model data with the clip data, otherwise the reference is lost!!
+        self.table_model.table_data = self.clip_data
+        self.table_view.model().layoutChanged.emit()
+    
     def export(self):
         if self.export_dir is None:
             pm.warning('No folder has been set for export')
@@ -320,7 +433,7 @@ class ExportFbxToUnity(QMainWindow):
         if time_range is None:
             pm.error('Could not determine time range.')
             return
-
+        
         self.save_options()
         
         # if "bake animation" is checked
@@ -370,7 +483,7 @@ class ExportFbxToUnity(QMainWindow):
         
         # open original file
         pm.openFile(original_file, force=True)
-        
+    
     def get_time_range(self):
         if self.time_slider_radio.isChecked():
             return pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)
@@ -385,8 +498,9 @@ class ExportFbxToUnity(QMainWindow):
         stepped_limit = 0.0001
         
         # get objects to bake
-        # todo: only meshes, joints, constrained objects and animated transforms
-        baked_objects = pm.listRelatives(self.original_selection, allDescendents=True, type='transform')
+        # todo: only joints and objects with incoming transform connections; like animation, constraints etc.
+        baked_objects = self.original_selection
+        baked_objects.append(pm.listRelatives(self.original_selection, allDescendents=True, type='transform'))
         
         samples = 1
         has_stepped = self.has_stepped_checkbox.isChecked()
@@ -453,7 +567,7 @@ class ExportFbxToUnity(QMainWindow):
         for curve in all_curves:
             if curve not in transform_curves:
                 pm.delete(curve)
-                
+    
     def apply_euler_filter(self, objs):
         curves = pm.keyframe(objs, q=True, name=True, attribute=['rx', 'ry', 'rz'])
         pm.filterCurve(curves, filter='euler')
@@ -485,8 +599,12 @@ class ExportFbxToUnity(QMainWindow):
         pm.mel.eval('FBXExportInstances -v 1')  # preserve instances by sharing same mesh
         pm.mel.eval('FBXExportUseSceneName -v 1')
         pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')  # clear previous clips
-        # pm.mel.eval('FBXExportSplitAnimationIntoTakes -v \"%s\" %d %d'
-        #             % (clip_name, time_range[0], time_range[1]))
+        
+        if self.animation_clip_checkbox.isChecked():
+            for row in self.clip_data:
+                pm.mel.eval('FBXExportSplitAnimationIntoTakes -v \"%s\" %d %d' %
+                            (str(row[0]), int(row[1]), int(row[2])))
+        
         pm.mel.eval('FBXExportGenerateLog -v 0')
         pm.mel.eval('FBXExportInAscii -v 0')
         
@@ -509,6 +627,8 @@ class ExportFbxToUnity(QMainWindow):
         pm.system.fileInfo['exportfbxtounity_bake_animation'] = int(self.bake_animation_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_euler_filter'] = int(self.euler_filter_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_has_stepped'] = int(self.has_stepped_checkbox.isChecked())
+        pm.system.fileInfo['exportfbxtounity_animation_clip'] = int(self.animation_clip_checkbox.isChecked())
+        pm.system.fileInfo['exportfbxtounity_clips'] = json.dumps(self.clip_data)
         
         # save "export_dir" with preferences
         if self.export_dir is not None:
@@ -528,8 +648,10 @@ class ExportFbxToUnity(QMainWindow):
             self.bake_animation_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_bake_animation']))
             self.euler_filter_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_euler_filter']))
             self.has_stepped_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_has_stepped']))
+            self.animation_clip_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_animation_clip']))
         except (RuntimeError, KeyError):
             # defaults
+            print '// Loading defaults...'
             self.file_input.setText(os.path.splitext(os.path.basename(pm.system.sceneName()))[0])
             self.time_slider_radio.setChecked(True)
             self.start_end_radio.setChecked(False)
@@ -539,6 +661,10 @@ class ExportFbxToUnity(QMainWindow):
             self.bake_animation_checkbox.setChecked(False)
             self.euler_filter_checkbox.setChecked(False)
             self.has_stepped_checkbox.setChecked(False)
+            self.animation_clip_checkbox.setChecked(False)
+            
+        # animation clips
+        self.load_clips()
         
         # load "export_dir" from preferences
         try:
@@ -553,3 +679,59 @@ class ElidedLabel(QLabel):
         metrics = QFontMetrics(self.font())
         elided = metrics.elidedText(self.text(), Qt.ElideLeft, self.width())
         painter.drawText(self.rect(), self.alignment(), elided)
+
+
+class AnimationClipTableModel(QAbstractTableModel):
+    def __init__(self, parent, datain, header, *args):
+        QAbstractTableModel.__init__(self, parent, *args)
+        self.table_data = datain
+        self.header = header
+    
+    def rowCount(self, parent):
+        return len(self.table_data)
+    
+    def columnCount(self, parent):
+        col = 0
+        
+        if self.table_data[0]:
+            col = len(self.table_data[0])
+        
+        return col
+    
+    def data(self, index, role):
+        if role == Qt.DisplayRole or role == Qt.EditRole:
+            try:
+                row = index.row()
+                col = index.column()
+                return self.table_data[row][col]
+            except:
+                pass
+        
+        return None
+    
+    def headerData(self, col, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.header[col]
+        return None
+    
+    def setData(self, index, value, role=Qt.EditRole):
+        try:
+            row = index.row()
+            col = index.column()
+            self.table_data[row][col] = value
+            self.emit(SIGNAL("dataChanged()"))
+        except:
+            return False
+        
+        return True
+    
+    def flags(self, index):
+        flags = super(self.__class__, self).flags(index)
+        
+        flags |= Qt.ItemIsEditable
+        flags |= Qt.ItemIsSelectable
+        flags |= Qt.ItemIsEnabled
+        flags |= Qt.ItemIsDragEnabled
+        flags |= Qt.ItemIsDropEnabled
+        
+        return flags

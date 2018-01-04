@@ -8,7 +8,7 @@ def cycle_character_set(backwards=False):
     characters = pm.ls(type="character")
     active = pm.selectionConnection("highlightList", q=True, object=True)
     
-    if characters is None:
+    if not characters:
         return
     
     if active is None:

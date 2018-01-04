@@ -1,5 +1,5 @@
 """
-Cycles character sets either 
+Cycles character sets either forwards or backwards. It cycles alphabetically, NOT in the order shown in Maya.
 """
 
 import pymel.core as pm

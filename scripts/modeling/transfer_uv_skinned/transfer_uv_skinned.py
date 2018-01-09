@@ -13,7 +13,6 @@ def transfer_uv_skinned():
 	# find "Orig" object on skinned mesh
 	orig = None
 	for shape in shapes:
-		print shape.attr('intermediateObject')
 		if shape.attr('intermediateObject').get():
 			orig = shape
 			orig.attr('intermediateObject').set(False)

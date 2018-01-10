@@ -1,3 +1,7 @@
+"""
+Filename heads up display in lower right corner (by default)
+"""
+
 import pymel.core as pm
 import maya.api.OpenMaya as om
 import os

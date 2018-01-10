@@ -36,7 +36,7 @@ def create_file_hud(event=None):
     while block < 20:
         try:
             pm.headsUpDisplay('HUDFilename', 
-                section=9, 
+                section=hud_filename_section, 
                 block=block,
                 blockSize='medium',
                 label='Filename:',

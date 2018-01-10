@@ -42,7 +42,7 @@ def create_file_hud(event=None):
             pm.headsUpDisplay('HUDFilename', 
                 section=hud_filename_section, 
                 block=block,
-                blockSize='medium',
+                blockSize='small',
                 label='Filename:',
                 labelFontSize='small',
                 command=hud_file_object,

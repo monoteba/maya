@@ -28,7 +28,8 @@ def create_file_hud(event=None):
             blockSize='medium',
             label='filename',
             labelFontSize='small',
-            command=hud_file_object)
+            command=hud_file_object,
+            event='NewSceneOpened')
     except RuntimeError:
         pm.warning('HUD position is occupied!')
         return

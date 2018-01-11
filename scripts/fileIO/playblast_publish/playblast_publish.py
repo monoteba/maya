@@ -20,7 +20,7 @@ import sys
 import re
 from shutil import copyfile
 
-def publish_playblast():
+def playblast_publish():
     answer = pm.confirmDialog(
         title="Publish playblasted movies", 
         message="Copy all files in playblasts folder to corresponding subfolders?", 
@@ -103,4 +103,4 @@ def publish_playblast():
         sys.stdout.write('\n\n# Successfully copied all files!\n')
 
 
-publish_playblast()
+playblast_publish()

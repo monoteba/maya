@@ -16,14 +16,18 @@ import exportfbxtounity
 exportfbxtounity.create()
 """
 
-# todo: support multiple clips
 # todo: save project with maya project?
-# todo: cleanup curves
-# todo: consider if it's possible to set keys on fewer objects
+# todo: option for other export folder (if you often export same character to same folder)
+# todo: insert key on every clip start/end frame - ask to save? Can we just undo?
+# todo: cleanup curves - animation clips must have keys in them!
+# todo: how to bake without saving?
+# todo: optimize step tangent process
+# todo: add item to "File" menu
 
 import pymel.core as pm
+import maya.mel as mel
 import maya.OpenMayaUI as omui
-import maya.OpenMaya as om
+import maya.api.OpenMaya as om
 import os
 import json
 
@@ -69,6 +73,7 @@ def delete():
 class ExportFbxToUnity(QMainWindow):
     def __init__(self, parent):
         super(ExportFbxToUnity, self).__init__(parent)
+        self.parent = parent
         
         self.setWindowTitle('Export FBX to Unity')
         self.window_name = 'ExportFbxToUnityObj'
@@ -126,6 +131,7 @@ class ExportFbxToUnity(QMainWindow):
         self.new_callback = om.MSceneMessage.addCallback(om.MSceneMessage.kAfterNew, self.after_open_file)
         
         # create and open the ui
+        self.create_menu()
         self.create_window()
     
     def keyPressEvent(self, event):
@@ -145,8 +151,22 @@ class ExportFbxToUnity(QMainWindow):
     def remove_callbacks(self):
         om.MSceneMessage.removeCallback(self.open_callback)
         om.MSceneMessage.removeCallback(self.new_callback)
+        
+    def create_menu(self):
+        file_menu = pm.language.melGlobals['gMainFileMenu']
+        pm.mel.eval('buildFileMenu()')
+        
+        if pm.menuItem('exportfbxtounity', exists=True):
+            pm.deleteUI('exportfbxtounity', menuItem=True)
+        
+        pm.menuItem('exportfbxtounity', label='Export FBX', command=self.show_window, parent=file_menu)
+
+    def show_window(self, *args):
+        self.show()
+        self.raise_()
+        self.activateWindow()
     
-    def create_window(self):
+    def create_window(self, *args):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         
@@ -409,19 +429,6 @@ class ExportFbxToUnity(QMainWindow):
                 del self.clip_data[0]
         
         self.table_view.model().layoutChanged.emit()
-        
-    def load_clips(self):
-        try:
-            read_clips = pm.system.fileInfo['exportfbxtounity_clips']
-            if read_clips:
-                read_clips = read_clips.replace('\\"', '"')
-                self.clip_data = json.loads(read_clips)
-        except (RuntimeError, KeyError, ValueError):
-            pass
-        
-        # we have to re-assign the table model data with the clip data, otherwise the reference is lost!!
-        self.table_model.table_data = self.clip_data
-        self.table_view.model().layoutChanged.emit()
     
     def export(self):
         if self.export_dir is None:
@@ -498,9 +505,32 @@ class ExportFbxToUnity(QMainWindow):
         stepped_limit = 0.0001
         
         # get objects to bake
-        # todo: only joints and objects with incoming transform connections; like animation, constraints etc.
         baked_objects = self.original_selection
-        baked_objects.append(pm.listRelatives(self.original_selection, allDescendents=True, type='transform'))
+        joints = pm.listRelatives(self.original_selection, allDescendents=True, type='joint')
+        baked_objects.extend(pm.listRelatives(self.original_selection, allDescendents=True, type='transform'))
+        
+        pm.select(baked_objects, r=True)
+        obj_list = om.MGlobal.getActiveSelectionList()
+        iterator = om.MItSelectionList(obj_list, om.MFn.kDagNode)
+        
+        to_bake = []
+        while not iterator.isDone():
+            node = iterator.getDependNode()
+            nodeFn = om.MFnDependencyNode(node)
+            
+            if nodeFn.findPlug('tx', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('tx', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('ty', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('tz', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('rx', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('ry', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('rz', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('sx', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('sy', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('sz', True).connectedTo(True, False) or \
+                    nodeFn.findPlug('visibility', True).connectedTo(True, False):
+                to_bake.append(str(iterator.getDagPath().fullPathName()))
+            iterator.next()
         
         samples = 1
         has_stepped = self.has_stepped_checkbox.isChecked()
@@ -508,7 +538,7 @@ class ExportFbxToUnity(QMainWindow):
             samples = 0.5
         
         # bake selected transforms and children with half step
-        pm.bakeResults(baked_objects,
+        pm.bakeResults(to_bake,
                        time=time_range,
                        sampleBy=samples,
                        hierarchy='none',
@@ -518,11 +548,12 @@ class ExportFbxToUnity(QMainWindow):
                        minimizeRotation=True)
         
         # remove static channels to speed up analysis
-        pm.select(baked_objects, r=True)
+        to_bake.extend(joints)
+        pm.select(to_bake, r=True)
         pm.delete(staticChannels=True)
         
         muted_curves = []
-        for obj in baked_objects:
+        for obj in to_bake:
             for curve in pm.keyframe(obj, q=True, name=True):
                 # find muted curves
                 connection = pm.listConnections(curve, d=True, s=False)[0]
@@ -548,15 +579,15 @@ class ExportFbxToUnity(QMainWindow):
         
         # remove unsnapped keys
         if has_stepped:
-            pm.selectKey(baked_objects, unsnappedKeys=True)
+            pm.selectKey(to_bake, unsnappedKeys=True)
             pm.cutKey(animation='keys', clear=True)
         
         # apply euler filter
         if self.euler_filter_checkbox.isChecked():
-            self.apply_euler_filter(baked_objects)
+            self.apply_euler_filter(to_bake)
         
         pm.currentTime(time_range[0])
-        pm.setKeyframe(baked_objects, attribute=self.transform_attributes, t=time_range[0], insertBlend=False)
+        pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False)
     
     def remove_non_transform_curves(self):
         objs = self.original_selection
@@ -637,32 +668,57 @@ class ExportFbxToUnity(QMainWindow):
             pm.optionVar['exportfbxtounity_save_dir'] = ''
     
     def load_options(self):
-        # load settings from file
+        # try to load settings from file
         try:
             self.file_input.setText(pm.system.fileInfo['exportfbxtounity_file_name'])
+        except (RuntimeError, KeyError):
+            self.file_input.setText(os.path.splitext(os.path.basename(pm.system.sceneName()))[0])
+        
+        try:
             self.time_slider_radio.setChecked(int(pm.system.fileInfo['exportfbxtounity_time_slider_radio']))
+        except (RuntimeError, KeyError):
+            self.time_slider_radio.setChecked(True)
+        
+        try:
             self.start_end_radio.setChecked(int(pm.system.fileInfo['exportfbxtounity_start_end_radio']))
+        except (RuntimeError, KeyError):
+            self.start_end_radio.setChecked(False)
+        
+        try:
             self.start_input.setText(pm.system.fileInfo['exportfbxtounity_start'])
+        except (RuntimeError, KeyError):
+            self.start_input.setText('')
+        
+        try:
             self.end_input.setText(pm.system.fileInfo['exportfbxtounity_end'])
+        except (RuntimeError, KeyError):
+            self.end_input.setText('')
+        
+        try:
             self.animation_only_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_animation_only']))
+        except (RuntimeError, KeyError):
+            self.animation_only_checkbox.setChecked(False)
+        
+        try:
             self.bake_animation_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_bake_animation']))
+        except (RuntimeError, KeyError):
+            self.bake_animation_checkbox.setChecked(False)
+        
+        try:
             self.euler_filter_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_euler_filter']))
+        except (RuntimeError, KeyError):
+            self.euler_filter_checkbox.setChecked(False)
+        
+        try:
             self.has_stepped_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_has_stepped']))
+        except (RuntimeError, KeyError):
+            self.has_stepped_checkbox.setChecked(False)
+        
+        try:
             self.animation_clip_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_animation_clip']))
         except (RuntimeError, KeyError):
-            # defaults
-            print '// Loading defaults...'
-            self.file_input.setText(os.path.splitext(os.path.basename(pm.system.sceneName()))[0])
-            self.time_slider_radio.setChecked(True)
-            self.start_end_radio.setChecked(False)
-            self.start_input.setText('')
-            self.end_input.setText('')
-            self.animation_only_checkbox.setChecked(False)
-            self.bake_animation_checkbox.setChecked(False)
-            self.euler_filter_checkbox.setChecked(False)
-            self.has_stepped_checkbox.setChecked(False)
             self.animation_clip_checkbox.setChecked(False)
-            
+        
         # animation clips
         self.load_clips()
         
@@ -671,6 +727,19 @@ class ExportFbxToUnity(QMainWindow):
             self.export_dir = pm.optionVar['exportfbxtounity_save_dir']
         except (RuntimeError, KeyError):
             self.export_dir = None
+    
+    def load_clips(self):
+        try:
+            read_clips = pm.system.fileInfo['exportfbxtounity_clips']
+            if read_clips:
+                read_clips = read_clips.replace('\\"', '"')
+                self.clip_data = json.loads(read_clips)
+        except (RuntimeError, KeyError, ValueError):
+            pass
+        
+        # we have to re-assign the table model data with the clip data, otherwise the reference is lost!!
+        self.table_model.table_data = self.clip_data
+        self.table_view.model().layoutChanged.emit()
 
 
 class ElidedLabel(QLabel):

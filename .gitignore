@@ -45,3 +45,4 @@ fabric.properties
 
 # Custom ignores
 _wip/
+*.pyc

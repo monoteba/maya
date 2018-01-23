@@ -60,8 +60,8 @@ class ReplaceFileNodePathsUI(QMainWindow):
         super(ReplaceFileNodePathsUI, self).__init__(parent)
         self.parent = parent
 
-        self.setWindowTitle('Replace File Node Paths')
-        self.window_name = 'ReplaceFileNodePathsObj'
+        self.setWindowTitle('Replace File Texture Paths')
+        self.window_name = 'ReplaceFileTexturePathsObj'
         self.setObjectName(self.window_name)
 
         if os.name == 'nt':  # windows platform
@@ -74,7 +74,7 @@ class ReplaceFileNodePathsUI(QMainWindow):
         self.setMinimumWidth(350)
 
         self.create_window()
-        self.load_options()
+        self.setAttribute(Qt.WA_DeleteOnClose)
 
 
     def keyPressEvent(self, event):
@@ -88,6 +88,8 @@ class ReplaceFileNodePathsUI(QMainWindow):
     
     def close_window(self):
         self.close()
+        global window
+        window = None
         
         
     def show_window(self, *args):
@@ -118,7 +120,7 @@ class ReplaceFileNodePathsUI(QMainWindow):
 
         # description
         self.desc_layout = QHBoxLayout()
-        self.desc_label = QLabel('Replace the image path of "file" and "psdFileTex" nodes')
+        self.desc_label = QLabel('Replace the image path of "file" and "psdFileTex" textures')
         self.desc_label.setFont(font_bold)
         self.desc_label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.desc_label.setWordWrap(True)
@@ -157,10 +159,10 @@ class ReplaceFileNodePathsUI(QMainWindow):
 
         # buttons
         self.btn_layout = QHBoxLayout()
-        self.selected_btn = QPushButton('Selected')
+        self.selected_btn = QPushButton('Replace Selected')
         self.selected_btn.setToolTip('Replace image path in selected file nodes.')
         self.connect(self.selected_btn, SIGNAL('clicked()'), partial(self.btn_clicked, True))
-        self.all_btn = QPushButton('All')
+        self.all_btn = QPushButton('Replace All')
         self.all_btn.setToolTip('Replace image path in all file nodes.')
         self.connect(self.all_btn, SIGNAL('clicked()'), partial(self.btn_clicked, False))
         self.btn_layout.addWidget(self.selected_btn)
@@ -177,6 +179,8 @@ class ReplaceFileNodePathsUI(QMainWindow):
         inner_layout.addLayout(self.btn_layout)
 
         main_layout.addLayout(inner_layout)
+
+        self.load_options()
 
 
     def btn_clicked(self, selected=True):
@@ -283,6 +287,9 @@ class ReplaceFileNodePaths():
                 if search:
                     new_path = old_path.replace(search, replace)
 
-                node.attr('fileTextureName').set(before + new_path + after)
+                try:
+                    node.attr('fileTextureName').set(before + new_path + after)
+                except Exception as e:
+                    pm.warning(str(e))
 
         sys.stdout.write('# Replaced image name in %d nodes\n' % len(file_nodes))

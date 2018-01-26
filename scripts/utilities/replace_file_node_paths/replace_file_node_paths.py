@@ -105,7 +105,7 @@ class ReplaceFileNodePathsUI(QMainWindow):
         main_layout.setContentsMargins(6, 6, 6, 6)
 
         self.setStyleSheet(
-            'QLabel { min-width: 75px; min-height: 20px; }'
+            'QLabel { min-width: 110px; min-height: 20px; }'
             'QLabel:disabled { background-color: none; }'
             'QLineEdit { min-height: 20px; padding: 0 3px; border-radius: 2px; }'
             'QLineEdit:disabled { color: rgb(128,128,128); background-color: rgb(64,64,64); }'
@@ -125,6 +125,14 @@ class ReplaceFileNodePathsUI(QMainWindow):
         self.desc_label.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.desc_label.setWordWrap(True)
         self.desc_layout.addWidget(self.desc_label)
+
+        # missing only layout
+        self.missing_layout = QHBoxLayout()
+        self.missing_label = self.create_label('Missing Files Only')
+        self.missing_checkbox = QCheckBox()
+        self.missing_checkbox.setToolTip("Only replace for file nodes, where the image file cannot be found or doesn't exists.")
+        self.missing_layout.addWidget(self.missing_label)
+        self.missing_layout.addWidget(self.missing_checkbox)
 
         # input layout
         self.input_layout = QGridLayout()
@@ -173,9 +181,11 @@ class ReplaceFileNodePathsUI(QMainWindow):
         inner_layout.setSpacing(6)
         inner_layout.addLayout(self.desc_layout)
         inner_layout.addLayout(self.separator_layout())
+        inner_layout.addLayout(self.missing_layout)
+        inner_layout.addSpacerItem(self.create_spacer_item(12))
         inner_layout.addLayout(self.input_layout)
         inner_layout.addStretch()
-        inner_layout.addSpacerItem(self.create_spacer_item(12))
+        inner_layout.addSpacerItem(self.create_spacer_item(24))
         inner_layout.addLayout(self.btn_layout)
 
         main_layout.addLayout(inner_layout)
@@ -189,7 +199,8 @@ class ReplaceFileNodePathsUI(QMainWindow):
             after=self.after_line_edit.text(),
             search=self.search_line_edit.text(), 
             replace=self.replace_line_edit.text(), 
-            selected=selected
+            selected=selected,
+            missing_only=self.missing_checkbox.isChecked()
             )
 
     def clear_btn_clicked(self):
@@ -206,6 +217,7 @@ class ReplaceFileNodePathsUI(QMainWindow):
 
 
     def save_options(self):
+        pm.optionVar['replacefilenodepaths_missing'] = int(self.missing_checkbox.isChecked())
         pm.optionVar['replacefilenodepaths_before'] = self.before_line_edit.text()
         pm.optionVar['replacefilenodepaths_after'] = self.after_line_edit.text()
         pm.optionVar['replacefilenodepaths_search'] = self.search_line_edit.text()
@@ -214,23 +226,28 @@ class ReplaceFileNodePathsUI(QMainWindow):
 
     def load_options(self):
         try:
+            self.missing_checkbox.setChecked(int(pm.optionVar['replacefilenodepaths_missing']))
+        except:
+            pass
+
+        try:
             self.before_line_edit.setText(pm.optionVar['replacefilenodepaths_before'])
-        except (RuntimeError, KeyError):
+        except:
             pass
 
         try:
             self.after_line_edit.setText(pm.optionVar['replacefilenodepaths_after'])
-        except (RuntimeError, KeyError):
+        except:
             pass
 
         try:
             self.search_line_edit.setText(pm.optionVar['replacefilenodepaths_search'])
-        except (RuntimeError, KeyError):
+        except:
             pass
 
         try:
             self.replace_line_edit.setText(pm.optionVar['replacefilenodepaths_replace'])
-        except (RuntimeError, KeyError):
+        except:
             pass
 
         self.search_edit_changed()
@@ -240,6 +257,7 @@ class ReplaceFileNodePathsUI(QMainWindow):
     def create_label(text=""):
         label = QLabel(text)
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         return label
 
 
@@ -265,7 +283,7 @@ class ReplaceFileNodePathsUI(QMainWindow):
 
 class ReplaceFileNodePaths():
     @staticmethod
-    def replace(before="", after="", search="", replace="", selected=True):
+    def replace(before="", after="", search="", replace="", selected=True, missing_only=False):
 
         file_nodes = pm.ls(sl=selected, exactType='file')
         file_nodes.extend(pm.ls(sl=selected, exactType='psdFileTex'))
@@ -279,10 +297,21 @@ class ReplaceFileNodePaths():
         search = search.replace('\\', '/')
         replace = replace.replace('\\', '/')
 
+        # filter missing files
+        if missing_only:
+            missing_files = []
+            for node in file_nodes:
+                f = node.attr('fileTextureName').get()
+                if not os.path.isfile(f):
+                    missing_files.append(node)
+
+            file_nodes = missing_files
+
+
         with pm.UndoChunk():
             for node in file_nodes:
                 old_path = node.attr('fileTextureName').get()
-                new_path = ""
+                new_path = old_path
 
                 if search:
                     new_path = old_path.replace(search, replace)
@@ -292,4 +321,4 @@ class ReplaceFileNodePaths():
                 except Exception as e:
                     pm.warning(str(e))
 
-        sys.stdout.write('# Replaced image name in %d nodes\n' % len(file_nodes))
+        sys.stdout.write('# Replaced %d image name(s)\n' % len(file_nodes))

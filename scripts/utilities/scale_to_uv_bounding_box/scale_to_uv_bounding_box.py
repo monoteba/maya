@@ -33,7 +33,7 @@ def scale_to_uv_bounding_box(xy=False, xz=True, yz=False):
             obj.attr(w_attr).set(obj_w)
         else:
             # change the height
-            obj_h = obj.attr(w_attr).get() * ratio
+            obj_h = obj.attr(w_attr).get() / ratio
             obj.attr(h_attr).set(obj_h)
 
 

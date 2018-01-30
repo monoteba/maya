@@ -50,7 +50,7 @@ def scale_to_image_dimensions(xy=False, xz=True, yz=False, rename=False):
             obj.attr(w_attr).set(obj_w)
         else:
             # change the height
-            obj_h = obj.attr(w_attr).get() * r
+            obj_h = obj.attr(w_attr).get() / r
             obj.attr(h_attr).set(obj_h)
 
 

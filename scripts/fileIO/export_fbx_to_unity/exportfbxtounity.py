@@ -78,8 +78,8 @@ class ExportFbxToUnity(QMainWindow):
         self.window_name = 'ExportFbxToUnityObj'
         self.setObjectName(self.window_name)
         
-        self.setMinimumWidth(500)
-        self.setMaximumWidth(1000)
+        self.setMinimumWidth(350)
+        #self.setMaximumWidth(1000)
         
         # we need both of these to make the window order behave correctly
         self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
@@ -215,12 +215,13 @@ class ExportFbxToUnity(QMainWindow):
         set_folder_label = self.create_label('Export folder:')
         
         set_folder_button = QPushButton('Set Export Folder')
-        set_folder_button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        set_folder_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         set_folder_button.setFixedHeight(button_small_height)
         self.connect(set_folder_button, SIGNAL("clicked()"), self.set_export_folder)
         
         self.set_folder_path_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.set_folder_path_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.set_folder_path_label.setMinimumWidth(1)
         
         set_folder_layout.addWidget(set_folder_label)
         set_folder_layout.addWidget(set_folder_button)

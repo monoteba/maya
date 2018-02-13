@@ -25,7 +25,6 @@ exportfbxtounity.create()
 # todo: add item to "File" menu
 
 import pymel.core as pm
-import maya.mel as mel
 import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om
 import os
@@ -153,6 +152,9 @@ class ExportFbxToUnity(QMainWindow):
         om.MSceneMessage.removeCallback(self.new_callback)
         
     def create_menu(self):
+        # add item to File menu - disabled for now
+        return
+        
         file_menu = pm.language.melGlobals['gMainFileMenu']
         pm.mel.eval('buildFileMenu()')
         
@@ -588,6 +590,9 @@ class ExportFbxToUnity(QMainWindow):
         
         pm.currentTime(time_range[0])
         pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False)
+        
+        # re-select original selection, so that we export the right thing
+        pm.select(self.original_selection, r=True)
     
     def remove_non_transform_curves(self):
         objs = self.original_selection
@@ -611,7 +616,7 @@ class ExportFbxToUnity(QMainWindow):
         
         # set fbx options
         pm.mel.eval('FBXResetExport')  # reset any user preferences so we start clean
-        pm.mel.eval('FBXExportAnimationOnly -v %d' % self.animation_only_checkbox.isChecked())
+        pm.mel.eval('FBXExportAnimationOnly -v %d' % int(self.animation_only_checkbox.isChecked()))
         pm.mel.eval('FBXExportBakeComplexAnimation -v 0')
         pm.mel.eval('FBXExportBakeComplexStart -v %d' % time_range[0])
         pm.mel.eval('FBXExportBakeComplexEnd -v %d' % time_range[1])

@@ -29,6 +29,7 @@ import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om
 import os
 import json
+import sys
 
 qt_version = 5
 try:
@@ -53,20 +54,26 @@ def get_main_maya_window():
 
 def create():
     global window
-    if window is None:
-        window = ExportFbxToUnity(parent=get_main_maya_window())
-        print '// Created %s' % window.objectName()
-    window.show()  # show the window
-    window.raise_()  # raise it on top of others
-    window.activateWindow()  # set focus to it
+    try:
+        if window is None:
+            window = ExportFbxToUnity(parent=get_main_maya_window())
+            print '// Created %s' % window.objectName()
+        window.show()  # show the window
+        window.raise_()  # raise it on top of others
+        window.activateWindow()  # set focus to it
+    except Exception as e:
+        sys.stdout.write(str(e) + '\n')
 
 
 def delete():
     global window
-    if window is not None:
-        print '// Deleting %s' % window.objectName()
-        window.delete_instance()
-        window = None
+    try:
+        if window is not None:
+            print '// Deleting %s' % window.objectName()
+            window.delete_instance()
+            window = None
+    except Exception as e:
+        sys.stdout.write(str(e) + '\n')
 
 
 class ExportFbxToUnity(QMainWindow):
@@ -79,10 +86,14 @@ class ExportFbxToUnity(QMainWindow):
         self.setObjectName(self.window_name)
         
         self.setMinimumWidth(350)
-        #self.setMaximumWidth(1000)
+        # self.setMaximumWidth(1000)
         
         # we need both of these to make the window order behave correctly
-        self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        if os.name == 'nt':  # windows platform
+            self.setWindowFlags(Qt.Window)
+        else:
+            self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+
         self.setProperty("saveWindowPref", True)
         
         self.original_selection = None
@@ -90,6 +101,7 @@ class ExportFbxToUnity(QMainWindow):
         
         # qt widgets
         self.file_input = QLineEdit()
+        self.file_input.setToolTip('Tip: Save to subfolders using forward slashes like\nsubfolder/my_file.fbx')
         self.set_folder_path_label = ElidedLabel()
         
         self.time_slider_radio = QRadioButton('Time slider')
@@ -137,8 +149,11 @@ class ExportFbxToUnity(QMainWindow):
         pass  # Prevent key press events to propagate to Maya
     
     def hideEvent(self, event):
-        if not self.isMinimized():
-            self.close_window()
+        try:
+            if not self.isMinimized():
+                self.close_window()
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
     
     def delete_instance(self):
         self.remove_callbacks()
@@ -262,7 +277,7 @@ class ExportFbxToUnity(QMainWindow):
         self.bake_animation_checkbox.setToolTip('Use a customized bake method. '
                                                 'For safety, this requires saving the file before.')
         self.euler_filter_checkbox.setToolTip('Apply euler filter to rotation after baking.')
-        self.has_stepped_checkbox.setToolTip('After baking animation, attempt to set tangents to step. '
+        self.has_stepped_checkbox.setToolTip('After baking animation, attempt to set tangents to step.\n\n'
                                              'IMPORTANT: Untick "Resample Curves" in Unity to keep the stepped '
                                              'tangents.')
         
@@ -462,21 +477,19 @@ class ExportFbxToUnity(QMainWindow):
             return
         
         # if asked to skip confirmation message (0 is default)
-        if pm.optionVar.get('exportfbxtounity_skip_save_confirm', 0) == 0:
-            confirm = pm.confirmDialog(title='Save file and continue?',
-                                       message='This will save the current file and re-open it when done. Are you sure '
-                                               'you want to continue?',
-                                       button=['Yes', "Yes (never ask again)", 'No'],
-                                       cancelButton='No',
-                                       dismissString='No')
-            
-            if confirm == 'No':
-                return
-            elif confirm == "Yes (don't ask again)":
-                pm.optionVar['exportfbxtounity_skip_save_confirm'] = 1
+        confirm = pm.confirmDialog(title='Bake animation is NOT undoable!',
+                                   message='Do you want to save before baking the animation and re-open the file after '
+                                           'it is done? This action cannot be undone!',
+                                   button=['Save, bake and re-open', "Bake without saving", 'Cancel'],
+                                   cancelButton='Cancel',
+                                   dismissString='Cancel')
         
+        if confirm == 'Cancel':
+            return
+            
         # save original file
-        original_file = pm.saveFile(force=True)
+        if confirm == 'Save, bake and re-open':
+            original_file = pm.saveFile(force=True)
         
         self.original_selection = pm.ls(sl=True)
         
@@ -488,11 +501,13 @@ class ExportFbxToUnity(QMainWindow):
             self.custom_bake(time_range)
             self.remove_non_transform_curves()
             self.export_fbx(time_range)
-        except:
+        except Exception as e:
             pm.warning('An unknown error occured.')
+            print str(e)
         
         # open original file
-        pm.openFile(original_file, force=True)
+        if confirm == 'Save, bake and re-open':
+            pm.openFile(original_file, force=True)
     
     def get_time_range(self):
         if self.time_slider_radio.isChecked():
@@ -648,6 +663,7 @@ class ExportFbxToUnity(QMainWindow):
         # save the fbx
         f = "%s/%s.fbx" % (self.export_dir, self.file_input.text())
         pm.mel.eval('FBXExport -f "%s" -s' % f)
+        sys.stdout.write('# Saved fbx to: %s\n' % f)
     
     def close_window(self):
         self.save_options()
@@ -749,7 +765,7 @@ class ExportFbxToUnity(QMainWindow):
 
 
 class ElidedLabel(QLabel):
-    def paintEvent(self, event):
+    def paintEvent(self, *args, **kwargs):
         painter = QPainter(self)
         metrics = QFontMetrics(self.font())
         elided = metrics.elidedText(self.text(), Qt.ElideLeft, self.width())
@@ -758,9 +774,12 @@ class ElidedLabel(QLabel):
 
 class AnimationClipTableModel(QAbstractTableModel):
     def __init__(self, parent, datain, header, *args):
-        QAbstractTableModel.__init__(self, parent, *args)
-        self.table_data = datain
-        self.header = header
+        try:
+            QAbstractTableModel.__init__(self, parent, *args)
+            self.table_data = datain
+            self.header = header
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
     
     def rowCount(self, parent):
         return len(self.table_data)
@@ -779,15 +798,18 @@ class AnimationClipTableModel(QAbstractTableModel):
                 row = index.row()
                 col = index.column()
                 return self.table_data[row][col]
-            except:
-                pass
+            except Exception as e:
+                sys.stdout.write(str(e) + '\n')
         
         return None
     
     def headerData(self, col, orientation, role):
-        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self.header[col]
-        return None
+        try:
+            if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+                return self.header[col]
+            return None
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
     
     def setData(self, index, value, role=Qt.EditRole):
         try:
@@ -795,18 +817,22 @@ class AnimationClipTableModel(QAbstractTableModel):
             col = index.column()
             self.table_data[row][col] = value
             self.emit(SIGNAL("dataChanged()"))
-        except:
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
             return False
         
         return True
     
     def flags(self, index):
-        flags = super(self.__class__, self).flags(index)
-        
-        flags |= Qt.ItemIsEditable
-        flags |= Qt.ItemIsSelectable
-        flags |= Qt.ItemIsEnabled
-        flags |= Qt.ItemIsDragEnabled
-        flags |= Qt.ItemIsDropEnabled
-        
-        return flags
+        try:
+            flags = super(self.__class__, self).flags(index)
+            
+            flags |= Qt.ItemIsEditable
+            flags |= Qt.ItemIsSelectable
+            flags |= Qt.ItemIsEnabled
+            flags |= Qt.ItemIsDragEnabled
+            flags |= Qt.ItemIsDropEnabled
+            
+            return flags
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')

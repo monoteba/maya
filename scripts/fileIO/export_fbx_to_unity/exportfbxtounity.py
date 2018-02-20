@@ -403,7 +403,7 @@ class ExportFbxToUnity(QMainWindow):
     
     def update_export_folder_path(self):
         if self.export_dir:
-            self.set_folder_path_label.setText(self.export_dir)
+            self.set_folder_path_label.setText(self.export_dir + '/')
         else:
             self.set_folder_path_label.setText('(not set)')
     
@@ -426,7 +426,7 @@ class ExportFbxToUnity(QMainWindow):
             return
         
         self.export_dir = dialog_dir[0]
-        self.set_folder_path_label.setText(self.export_dir)
+        self.set_folder_path_label.setText(self.export_dir + '/')
     
     def add_clip(self):
         name = "Take %03d" % (len(self.clip_data) + 1)
@@ -452,6 +452,15 @@ class ExportFbxToUnity(QMainWindow):
         if self.export_dir is None:
             pm.warning('No folder has been set for export')
             return
+
+        selection = pm.ls(sl=True)
+        if not selection:
+            pm.confirmDialog(title='No objects selected', message='Please select one or more object(s) to export.',
+                             button=['OK'], defaultButton='OK')
+            self.original_selection = None
+            return
+
+        self.original_selection = selection
         
         time_range = self.get_time_range()
         
@@ -490,8 +499,6 @@ class ExportFbxToUnity(QMainWindow):
         # save original file
         if confirm == 'Save, bake and re-open':
             original_file = pm.saveFile(force=True)
-        
-        self.original_selection = pm.ls(sl=True)
         
         # set playback range (appears that fbx uses it for the range when exporting)
         pm.playbackOptions(min=time_range[0], max=time_range[1])
@@ -662,6 +669,15 @@ class ExportFbxToUnity(QMainWindow):
         
         # save the fbx
         f = "%s/%s.fbx" % (self.export_dir, self.file_input.text())
+        
+        d = os.path.dirname(f)
+        if not os.path.isDir(d):
+            try:
+                os.makedirs(d)
+            except Exception as e:
+                sys.stdout.write(str(e))
+                return
+        
         pm.mel.eval('FBXExport -f "%s" -s' % f)
         sys.stdout.write('# Saved fbx to: %s\n' % f)
     

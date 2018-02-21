@@ -671,7 +671,7 @@ class ExportFbxToUnity(QMainWindow):
         f = "%s/%s.fbx" % (self.export_dir, self.file_input.text())
         
         d = os.path.dirname(f)
-        if not os.path.isDir(d):
+        if not os.path.isdir(d):
             try:
                 os.makedirs(d)
             except Exception as e:

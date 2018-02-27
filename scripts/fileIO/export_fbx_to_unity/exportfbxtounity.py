@@ -110,6 +110,10 @@ class ExportFbxToUnity(QMainWindow):
         self.start_input = QLineEdit()
         self.end_input = QLineEdit()
         
+        self.input_connections_layout = QHBoxLayout()
+        self.input_connections_label = self.create_label('Input connections:')
+        self.input_connections_checkbox = QCheckBox()
+        
         self.animation_only_layout = QHBoxLayout()
         self.animation_only_label = self.create_label('Animation only:')
         self.animation_only_checkbox = QCheckBox()
@@ -272,6 +276,7 @@ class ExportFbxToUnity(QMainWindow):
         start_end_layout.addWidget(self.end_input)
         
         # options
+        self.input_connections_checkbox.setToolTip('Include input connections when exporting.')
         self.animation_only_checkbox.setToolTip('Only export animation without geometry. '
                                                 'Useful for character animation.')
         self.bake_animation_checkbox.setToolTip('Use a customized bake method. '
@@ -283,6 +288,9 @@ class ExportFbxToUnity(QMainWindow):
         
         self.connect(self.bake_animation_checkbox, SIGNAL('toggled(bool)'), self.toggle_bake_animation)
         self.connect(self.animation_clip_checkbox, SIGNAL('toggled(bool)'), self.toggle_animation_clip)
+        
+        self.input_connections_layout.addWidget(self.input_connections_label)
+        self.input_connections_layout.addWidget(self.input_connections_checkbox)
         
         self.animation_only_layout.addWidget(self.animation_only_label)
         self.animation_only_layout.addWidget(self.animation_only_checkbox)
@@ -344,6 +352,7 @@ class ExportFbxToUnity(QMainWindow):
         inner_vertical_layout.addLayout(time_layout)
         inner_vertical_layout.addLayout(start_end_layout)
         inner_vertical_layout.addLayout(self.create_separator_layout())
+        inner_vertical_layout.addLayout(self.input_connections_layout)
         inner_vertical_layout.addLayout(self.animation_only_layout)
         inner_vertical_layout.addLayout(self.create_separator_layout())
         inner_vertical_layout.addLayout(self.bake_animation_layout)
@@ -654,7 +663,7 @@ class ExportFbxToUnity(QMainWindow):
         pm.mel.eval('FBXExportSkins -v 1')
         pm.mel.eval('FBXExportSkeletonDefinitions -v 1')
         pm.mel.eval('FBXExportEmbeddedTextures -v 0')
-        pm.mel.eval('FBXExportInputConnections -v 1')
+        pm.mel.eval('FBXExportInputConnections -v %d' % int(self.input_connections_checkbox.isChecked()))  # should be off by default
         pm.mel.eval('FBXExportInstances -v 1')  # preserve instances by sharing same mesh
         pm.mel.eval('FBXExportUseSceneName -v 1')
         pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')  # clear previous clips
@@ -692,6 +701,7 @@ class ExportFbxToUnity(QMainWindow):
         pm.system.fileInfo['exportfbxtounity_start_end_radio'] = int(self.start_end_radio.isChecked())
         pm.system.fileInfo['exportfbxtounity_start'] = self.start_input.text()
         pm.system.fileInfo['exportfbxtounity_end'] = self.end_input.text()
+        pm.system.fileInfo['exportfbxtounity_input_connections'] = int(self.input_connections_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_animation_only'] = int(self.animation_only_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_bake_animation'] = int(self.bake_animation_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_euler_filter'] = int(self.euler_filter_checkbox.isChecked())
@@ -733,10 +743,15 @@ class ExportFbxToUnity(QMainWindow):
             self.end_input.setText('')
         
         try:
+            self.input_connections_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_input_connections']))
+        except (RuntimeError, KeyError):
+            self.input_connections_checkbox.setChecked(False)
+        
+        try:
             self.animation_only_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_animation_only']))
         except (RuntimeError, KeyError):
             self.animation_only_checkbox.setChecked(False)
-        
+            
         try:
             self.bake_animation_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_bake_animation']))
         except (RuntimeError, KeyError):

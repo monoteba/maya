@@ -575,11 +575,11 @@ class ExportFbxToUnity(QMainWindow):
         pm.bakeResults(to_bake,
                        time=time_range,
                        sampleBy=samples,
-                       hierarchy='none',
+                       hierarchy='below',
                        disableImplicitControl=True,
                        preserveOutsideKeys=False,
                        simulation=True,
-                       minimizeRotation=True)
+                       minimizeRotation=False)
         
         # remove static channels to speed up analysis
         to_bake.extend(joints)

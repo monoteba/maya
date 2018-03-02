@@ -93,7 +93,7 @@ class ExportFbxToUnity(QMainWindow):
             self.setWindowFlags(Qt.Window)
         else:
             self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
-
+        
         self.setProperty("saveWindowPref", True)
         
         self.original_selection = None
@@ -169,7 +169,7 @@ class ExportFbxToUnity(QMainWindow):
     def remove_callbacks(self):
         om.MSceneMessage.removeCallback(self.open_callback)
         om.MSceneMessage.removeCallback(self.new_callback)
-        
+    
     def create_menu(self):
         # add item to File menu - disabled for now
         return
@@ -181,7 +181,7 @@ class ExportFbxToUnity(QMainWindow):
             pm.deleteUI('exportfbxtounity', menuItem=True)
         
         pm.menuItem('exportfbxtounity', label='Export FBX', command=self.show_window, parent=file_menu)
-
+    
     def show_window(self, *args):
         self.show()
         self.raise_()
@@ -461,15 +461,15 @@ class ExportFbxToUnity(QMainWindow):
         if self.export_dir is None:
             pm.warning('No folder has been set for export')
             return
-
+        
         selection = pm.ls(sl=True)
         if not selection:
             pm.confirmDialog(title='No objects selected', message='Please select one or more object(s) to export.',
                              button=['OK'], defaultButton='OK')
             self.original_selection = None
             return
-
-        self.original_selection = selection
+        
+        self.original_selection = pm.ls(sl=True)
         
         time_range = self.get_time_range()
         
@@ -504,7 +504,7 @@ class ExportFbxToUnity(QMainWindow):
         
         if confirm == 'Cancel':
             return
-            
+        
         # save original file
         if confirm == 'Save, bake and re-open':
             original_file = pm.saveFile(force=True)
@@ -539,50 +539,43 @@ class ExportFbxToUnity(QMainWindow):
         stepped_limit = 0.0001
         
         # get objects to bake
-        baked_objects = self.original_selection
-        joints = pm.listRelatives(self.original_selection, allDescendents=True, type='joint')
-        baked_objects.extend(pm.listRelatives(self.original_selection, allDescendents=True, type='transform'))
+        # baked_objects = list(self.original_selection)  # copy the list
+        # joints = pm.listRelatives(self.original_selection, allDescendents=True, type='joint')
+        # baked_objects.extend(pm.listRelatives(self.original_selection, allDescendents=True, type='transform'))
         
-        pm.select(baked_objects, r=True)
-        obj_list = om.MGlobal.getActiveSelectionList()
-        iterator = om.MItSelectionList(obj_list, om.MFn.kDagNode)
+        # pm.select(baked_objects, r=True)
         
-        to_bake = []
-        while not iterator.isDone():
-            node = iterator.getDependNode()
-            nodeFn = om.MFnDependencyNode(node)
-            
-            if nodeFn.findPlug('tx', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('tx', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('ty', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('tz', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('rx', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('ry', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('rz', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('sx', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('sy', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('sz', True).connectedTo(True, False) or \
-                    nodeFn.findPlug('visibility', True).connectedTo(True, False):
-                to_bake.append(str(iterator.getDagPath().fullPathName()))
-            iterator.next()
+        # obj_list = om.MGlobal.getActiveSelectionList()
+        # iterator = om.MItSelectionList(obj_list, om.MFn.kDagNode)
+        to_bake = pm.listRelatives(self.original_selection, allDescendents=True, type='transform')
         
+        filtered = set()
+        filtered |= set(pm.listRelatives(self.original_selection, allDescendents=True, type='joint'))
+        for node in to_bake:
+            for at in self.transform_attributes:
+                if pm.hasAttr(node, at) and len(node.attr(at).inputs()) > 0:
+                    filtered.add(node)
+                    break
+
+        to_bake = list(filtered)
         samples = 1
         has_stepped = self.has_stepped_checkbox.isChecked()
         if has_stepped:
             samples = 0.5
-        
+            
         # bake selected transforms and children with half step
         pm.bakeResults(to_bake,
                        time=time_range,
                        sampleBy=samples,
-                       hierarchy='below',
+                       hierarchy='none',
                        disableImplicitControl=True,
                        preserveOutsideKeys=False,
+                       sparseAnimCurveBake=False,
                        simulation=True,
                        minimizeRotation=False)
         
         # remove static channels to speed up analysis
-        to_bake.extend(joints)
+        # to_bake.extend(joints)
         pm.select(to_bake, r=True)
         pm.delete(staticChannels=True)
         
@@ -663,7 +656,8 @@ class ExportFbxToUnity(QMainWindow):
         pm.mel.eval('FBXExportSkins -v 1')
         pm.mel.eval('FBXExportSkeletonDefinitions -v 1')
         pm.mel.eval('FBXExportEmbeddedTextures -v 0')
-        pm.mel.eval('FBXExportInputConnections -v %d' % int(self.input_connections_checkbox.isChecked()))  # should be off by default
+        pm.mel.eval('FBXExportInputConnections -v %d' % int(
+            self.input_connections_checkbox.isChecked()))  # should be off by default
         pm.mel.eval('FBXExportInstances -v 1')  # preserve instances by sharing same mesh
         pm.mel.eval('FBXExportUseSceneName -v 1')
         pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')  # clear previous clips
@@ -751,7 +745,7 @@ class ExportFbxToUnity(QMainWindow):
             self.animation_only_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_animation_only']))
         except (RuntimeError, KeyError):
             self.animation_only_checkbox.setChecked(False)
-            
+        
         try:
             self.bake_animation_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_bake_animation']))
         except (RuntimeError, KeyError):

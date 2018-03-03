@@ -563,6 +563,10 @@ class ExportFbxToUnity(QMainWindow):
         if has_stepped:
             samples = 0.5
             
+        # merge animation layers if necessary
+        if len(pm.ls(type='animLayer')) > 1:
+            pm.mel.eval('animLayerMerge( `ls -type animLayer` )')
+            
         # bake selected transforms and children with half step
         pm.bakeResults(to_bake,
                        time=time_range,

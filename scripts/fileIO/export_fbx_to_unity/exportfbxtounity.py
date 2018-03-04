@@ -498,7 +498,7 @@ class ExportFbxToUnity(QMainWindow):
         confirm = pm.confirmDialog(title='Bake animation is NOT undoable!',
                                    message='Do you want to save before baking the animation and re-open the file after '
                                            'it is done? This action cannot be undone!\n\n'
-                                           'Baking also removes animation layers',
+                                           'Baking also removes animation layers.',
                                    button=['Save, bake and re-open', "Bake without saving", 'Cancel'],
                                    cancelButton='Cancel',
                                    dismissString='Cancel')

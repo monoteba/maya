@@ -1,20 +1,19 @@
 """
-
 For testing and development in Maya use:
 import sys
 sys.path.append('')  # path to folder that contains this script
 
 import basic_ui
-basic_ui.delete()  # try to delete it before reloading to avoid duplicates
-reload(basic_ui)
+# basic_ui.delete()  # try to delete it before reloading to avoid duplicates, should only be needed when testing
+# reload(basic_ui)  # only reload when testing
 basic_ui.create()
 """
 
 import maya.OpenMayaUI as omui
+import os
 from functools import partial
 
-# PySide2 is for Maya 2017+
-# PySide is for Maya 2016-(2011 ?)
+# PySide2 is for Maya 2017+, PySide is for Maya 2016-(2011 ?)
 try:
     from PySide2.QtCore import *
     from PySide2.QtGui import *
@@ -35,9 +34,11 @@ def get_main_maya_window():
 
 def create():
     global basic_window
+    
     if basic_window is None:
         basic_window = BasicUI(parent=get_main_maya_window())
         print '// Created %s' % basic_window.objectName()
+        
     basic_window.show()  # show the window
     basic_window.raise_()  # raise it on top of others
     basic_window.activateWindow()  # set focus to it
@@ -55,13 +56,19 @@ class BasicUI(QMainWindow):
     def __init__(self, parent):
         super(BasicUI, self).__init__(parent)
         
+        self.parent = parent
         self.window_name = 'BasicWindowObj'
         
         # Set basic window properties
         self.setWindowTitle('Basic UI')
         self.setObjectName(self.window_name)
-        self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
-        self.setProperty("saveWindowPref", True)  # special for Maya on macOS and Linux
+        
+        if os.name == 'nt':  # windows platform
+            self.setWindowFlags(Qt.Window)
+        else:
+            self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+            
+        self.setProperty("saveWindowPref", True)  # maya's automatic window management
         
         # Define window dimensions
         self.setMinimumWidth(200)

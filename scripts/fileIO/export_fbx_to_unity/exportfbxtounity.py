@@ -548,17 +548,36 @@ class ExportFbxToUnity(QMainWindow):
         
         # obj_list = om.MGlobal.getActiveSelectionList()
         # iterator = om.MItSelectionList(obj_list, om.MFn.kDagNode)
-        to_bake = pm.listRelatives(self.original_selection, allDescendents=True, type='transform')
+        try:
+            to_bake = pm.ls(self.original_selection, type='transform')
+            to_bake += pm.listRelatives(self.original_selection, allDescendents=True, type='transform')
+            
+            # create a set, and add all joints to the set
+            filtered = set(pm.ls(self.original_selection, type='joint'))
+            filtered |= set(pm.listRelatives(self.original_selection, allDescendents=True, type='joint'))  # union op.
+        except:
+            print "error 1"
         
-        filtered = set()
-        filtered |= set(pm.listRelatives(self.original_selection, allDescendents=True, type='joint'))
+        # add blendshapes and animated transforms to the set
         for node in to_bake:
+            # blendshape?
+            try:
+                in_mesh = node.getShape()
+                if in_mesh is not None:
+                    blendshape = in_mesh.attr('inMesh').inputs()
+                    if pm.nodeType(blendshape) == 'blendShape':
+                        filtered.add(in_mesh[0])
+            except Exception as e:
+                pm.warning("Could not determine blendshape: %s" % e)
+            
+            # any inputs to transform attributes? i.e. any animation?
             for at in self.transform_attributes:
                 if pm.hasAttr(node, at) and len(node.attr(at).inputs()) > 0:
                     filtered.add(node)
                     break
 
         to_bake = list(filtered)
+        
         samples = 1
         has_stepped = self.has_stepped_checkbox.isChecked()
         if has_stepped:
@@ -567,7 +586,11 @@ class ExportFbxToUnity(QMainWindow):
         # merge animation layers if necessary
         if len(pm.ls(type='animLayer')) > 1:
             pm.mel.eval('animLayerMerge( `ls -type animLayer` )')
-            
+        
+        if len(to_bake) == 0:
+            pm.select(self.original_selection, r=True)
+            return
+        
         # bake selected transforms and children with half step
         pm.bakeResults(to_bake,
                        time=time_range,

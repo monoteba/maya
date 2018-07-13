@@ -46,3 +46,4 @@ fabric.properties
 _wip/
 *.pyc
 .DS_Store
+Thumbs.db

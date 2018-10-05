@@ -555,18 +555,27 @@ class ExportFbxToUnity(QMainWindow):
             # create a set, and add all joints to the set
             filtered = set(pm.ls(self.original_selection, type='joint'))
             filtered |= set(pm.listRelatives(self.original_selection, allDescendents=True, type='joint'))  # union op.
-        except:
-            print "error 1"
+        except Exception as e:
+            print ("error 1: %s" % e)
         
         # add blendshapes and animated transforms to the set
+        blendshapes = set()
         for node in to_bake:
             # blendshape?
             try:
-                in_mesh = node.getShape()
-                if in_mesh is not None:
-                    blendshape = in_mesh.attr('inMesh').inputs()
-                    if pm.nodeType(blendshape) == 'blendShape':
-                        filtered.add(in_mesh[0])
+                for shape in node.getShapes():
+                    shape_inputs = shape.inputs()
+                    # shape_inputs.extend(shape.attr('inMesh').inputs())  # maybe not needed
+                    
+                    # this should perhaps be rewritten as a recursive function,
+                    # that keeps traversing down the hierarchy
+                    for shape_input in shape_inputs:
+                        if pm.nodeType(shape_input) == 'blendShape':
+                            blendshapes.add(shape_input)
+                        elif pm.nodeType(shape_input) in ('skinCluster', 'objectSet'):
+                            for inp in shape_input.inputs():
+                                if pm.nodeType(inp) == 'blendShape':
+                                    blendshapes.add(inp)
             except Exception as e:
                 pm.warning("Could not determine blendshape: %s" % e)
             
@@ -576,7 +585,7 @@ class ExportFbxToUnity(QMainWindow):
                     filtered.add(node)
                     break
 
-        to_bake = list(filtered)
+        to_bake = list(filtered.union(blendshapes))
         
         samples = 1
         has_stepped = self.has_stepped_checkbox.isChecked()

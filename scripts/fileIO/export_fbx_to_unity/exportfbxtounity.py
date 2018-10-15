@@ -30,6 +30,7 @@ import maya.api.OpenMaya as om
 import os
 import json
 import sys
+import maya.cmds as cmds
 
 qt_version = 5
 try:
@@ -652,6 +653,7 @@ class ExportFbxToUnity(QMainWindow):
         
         pm.currentTime(time_range[0])
         pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False)
+        pm.setKeyframe(blendshapes, t=time_range[0], insertBlend=False)
         
         # re-select original selection, so that we export the right thing
         pm.select(self.original_selection, r=True)

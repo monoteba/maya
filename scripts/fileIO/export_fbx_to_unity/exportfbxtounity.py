@@ -652,8 +652,10 @@ class ExportFbxToUnity(QMainWindow):
             self.apply_euler_filter(to_bake)
         
         pm.currentTime(time_range[0])
-        pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False)
-        pm.setKeyframe(blendshapes, t=time_range[0], insertBlend=False)
+        if to_bake:
+            pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False)
+        if blendshapes:
+            pm.setKeyframe(blendshapes, t=time_range[0], insertBlend=False)
         
         # re-select original selection, so that we export the right thing
         pm.select(self.original_selection, r=True)

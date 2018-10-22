@@ -311,6 +311,7 @@ class ReplaceFileNodePaths():
         with pm.UndoChunk():
             for node in file_nodes:
                 old_path = node.attr('fileTextureName').get()
+                old_path = old_path.replace('\\', '/')
                 new_path = old_path
 
                 if search:

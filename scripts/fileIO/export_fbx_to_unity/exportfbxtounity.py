@@ -690,7 +690,7 @@ class ExportFbxToUnity(QMainWindow):
         pm.mel.eval('FBXExportCameras -v 0')
         pm.mel.eval('FBXExportConstraints -v 0')
         pm.mel.eval('FBXExportLights -v 0')
-        pm.mel.eval('FBXExportQuaternion -v quaternion')
+        pm.mel.eval('FBXExportQuaternion -v resample')
         pm.mel.eval('FBXExportAxisConversionMethod none')
         pm.mel.eval('FBXExportApplyConstantKeyReducer -v 0')
         pm.mel.eval('FBXExportSmoothMesh -v 0')  # do not export subdivision version

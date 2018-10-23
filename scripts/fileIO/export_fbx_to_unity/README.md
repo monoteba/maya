@@ -11,6 +11,17 @@ A pipeline tool for simplifying FBX export from Maya for use in Unity and potent
 - Custom animation bake method that works well with "stepped" animation.
 - Easy setup of animation clips.
 
+## Installation
+
+Copy __exportfbxtounity.py__ to Maya's scripts folder.
+
+Add this Python code to a shelf button or execute it from the Script Editor
+
+```python
+import exportfbxtounity
+exportfbxtounity.create()
+```
+
 ## Description
 
 **File name:** Output filename. It is recommended to use Unity's naming convention like _MyModel@SomeAnimation_.

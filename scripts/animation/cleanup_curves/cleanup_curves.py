@@ -1,4 +1,4 @@
-"""
+'''
 Removes redundant keys on animation curves.
 
 For example, if the keyframes at time {1, 5, 9} have the same value, but at time {13} the value changes. The keyframe at time {5} will be removed.
@@ -11,7 +11,7 @@ Will remove the last keyframe if it is identical the the previous keyframe.
 
 tolerance=0.001
 How large the difference needs to be for two keyframes to be considered equal. Setting the value to 0 may not produce expected results.
-"""
+'''
 
 import pymel.core as pm
 import maya.mel
@@ -39,19 +39,18 @@ def cleanupCurves(stepped=False, keepLast=True, tolerance=0.001):
     
     # return value
     totalKeys = 0
-    
     selection = pm.ls(sl=True)
+    
+    gMainProgressBar = maya.mel.eval('$tmp = $gMainProgressBar')
+    pm.progressBar(gMainProgressBar,
+                   edit=True,
+                   beginProgress=True,
+                   isInterruptable=True,
+                   status='Cleaning curves...',
+                   maxValue=len(selection))
+    
     for obj in selection:
         curves = pm.listConnections(obj, type="animCurve")
-        
-        gMainProgressBar = maya.mel.eval('$tmp = $gMainProgressBar')
-        
-        pm.progressBar(gMainProgressBar,
-                       edit=True,
-                       beginProgress=True,
-                       isInterruptable=True,
-                       status='Cleaning curves...',
-                       maxValue=len(curves))
         
         for curve in curves:
             keys = pm.keyframe(curve, q=True, timeChange=True, valueChange=True)
@@ -81,12 +80,13 @@ def cleanupCurves(stepped=False, keepLast=True, tolerance=0.001):
             # progress bar step
             if pm.progressBar(gMainProgressBar, query=True, isCancelled=True):
                 break
-            pm.progressBar(gMainProgressBar, edit=True, step=1)
+        
+        pm.progressBar(gMainProgressBar, edit=True, step=1)
     
     pm.progressBar(gMainProgressBar, edit=True, endProgress=True)
     
-    print "# {0} keys removed on ".format(totalKeys) + str([obj.name().encode() for obj in selection])
+    print "// {0} keys removed on ".format(totalKeys) + str([obj.name().encode() for obj in selection])
     return int(totalKeys)
 
 
-cleanupCurves(True, True, 0.001)
+cleanupCurves(False, True, 0.001)

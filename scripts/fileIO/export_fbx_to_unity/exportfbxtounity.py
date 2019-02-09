@@ -2,35 +2,30 @@
 ## Description
 Customized bake process and fbx settings suited for use with Unity and possibly other game engines as well.
 
+
 ## Features
 - Simplified export process
 - Split animation into clips
 - Maintain step tangent for keys (useful for stop-motion style animation)
-- Cleanup unchanged keys
+
 
 ## Installation
-Save script in Maya's script folder.
+Save script in Maya's scripts folder.
 
-## Execute as python
+
+## Execute as Python in Maya
 import exportfbxtounity
 exportfbxtounity.create()
 """
 
-# todo: save project with maya project?
-# todo: option for other export folder (if you often export same character to same folder)
-# todo: insert key on every clip start/end frame - ask to save? Can we just undo?
-# todo: cleanup curves - animation clips must have keys in them!
-# todo: how to bake without saving?
-# todo: optimize step tangent process
-# todo: add item to "File" menu
-
 import pymel.core as pm
 import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om
+import maya.utils
+import maya.mel
 import os
 import json
 import sys
-import maya.cmds as cmds
 
 qt_version = 5
 try:
@@ -58,7 +53,7 @@ def create():
     try:
         if window is None:
             window = ExportFbxToUnity(parent=get_main_maya_window())
-            print '// Created %s' % window.objectName()
+            sys.stdout.write('// Created %s\n' % window.objectName())
         window.show()  # show the window
         window.raise_()  # raise it on top of others
         window.activateWindow()  # set focus to it
@@ -70,7 +65,7 @@ def delete():
     global window
     try:
         if window is not None:
-            print '// Deleting %s' % window.objectName()
+            sys.stdout.write('// Deleting %s \n' % window.objectName())
             window.delete_instance()
             window = None
     except Exception as e:
@@ -118,6 +113,11 @@ class ExportFbxToUnity(QMainWindow):
         self.animation_only_layout = QHBoxLayout()
         self.animation_only_label = self.create_label('Animation only:')
         self.animation_only_checkbox = QCheckBox()
+        self.animation_only_description = QLabel('Blendshapes are not exported')
+        self.animation_only_description.setStyleSheet('color: rgb(128, 128, 128);')
+        self.animation_only_description.setFixedHeight(16)
+        self.animation_only_description.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.animation_only_description.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         
         self.bake_animation_layout = QGridLayout()
         self.bake_animation_label = self.create_label('Bake animation:')
@@ -132,10 +132,14 @@ class ExportFbxToUnity(QMainWindow):
         self.animation_clip_checkbox = QCheckBox()
         
         self.clip_data = [["Take 001", pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)]]
-        header = ["Clip name", "Start", "End"]
-        self.table_model = AnimationClipTableModel(self, self.clip_data, header)
-        self.table_view = QTableView()
-        self.table_view.setModel(self.table_model)
+        
+        self.header_labels = ["Clip name", "Start", "End"]
+        self.table_widget = QTableWidget()
+        self.table_widget.setColumnCount(3)
+        self.table_widget.setHorizontalHeaderLabels(self.header_labels)
+        self.table_widget.cellChanged.connect(self.table_cell_changed)
+        self.table_is_being_edited = False
+        
         self.add_clip_button = QPushButton('Add Clip')
         self.remove_clip_button = QPushButton('Remove Selected Clips')
         
@@ -146,8 +150,13 @@ class ExportFbxToUnity(QMainWindow):
         self.open_callback = om.MSceneMessage.addCallback(om.MSceneMessage.kAfterOpen, self.after_open_file)
         self.new_callback = om.MSceneMessage.addCallback(om.MSceneMessage.kAfterNew, self.after_open_file)
         
+        # try to load fbx plugin
+        if pm.pluginInfo('fbxmaya.bundle', q=True, r=True):
+            pm.loadPlugin('fbxmaya.bundle', quiet=True)
+        else:
+            pm.warning('Could not load FBX plugin.')
+        
         # create and open the ui
-        self.create_menu()
         self.create_window()
     
     def keyPressEvent(self, event):
@@ -170,18 +179,6 @@ class ExportFbxToUnity(QMainWindow):
     def remove_callbacks(self):
         om.MSceneMessage.removeCallback(self.open_callback)
         om.MSceneMessage.removeCallback(self.new_callback)
-    
-    def create_menu(self):
-        # add item to File menu - disabled for now
-        return
-        
-        file_menu = pm.language.melGlobals['gMainFileMenu']
-        pm.mel.eval('buildFileMenu()')
-        
-        if pm.menuItem('exportfbxtounity', exists=True):
-            pm.deleteUI('exportfbxtounity', menuItem=True)
-        
-        pm.menuItem('exportfbxtounity', label='Export FBX', command=self.show_window, parent=file_menu)
     
     def show_window(self, *args):
         self.show()
@@ -263,9 +260,10 @@ class ExportFbxToUnity(QMainWindow):
         # start/end input
         start_end_layout = QHBoxLayout()
         
-        number_validator = QDoubleValidator()
-        number_validator.setNotation(QDoubleValidator.StandardNotation)
-        number_validator.setDecimals(4)
+        number_validator = QIntValidator()
+        locale = QLocale()
+        locale.setNumberOptions(QLocale.OmitGroupSeparator | QLocale.RejectGroupSeparator)
+        number_validator.setLocale(locale)
         
         self.start_input.setFixedHeight(input_height)
         self.start_input.setValidator(number_validator)
@@ -295,6 +293,7 @@ class ExportFbxToUnity(QMainWindow):
         
         self.animation_only_layout.addWidget(self.animation_only_label)
         self.animation_only_layout.addWidget(self.animation_only_checkbox)
+        self.animation_only_layout.addWidget(self.animation_only_description)
         
         self.bake_animation_layout.addWidget(self.bake_animation_label, 0, 0)
         self.bake_animation_layout.addWidget(self.bake_animation_checkbox, 0, 1)
@@ -309,19 +308,14 @@ class ExportFbxToUnity(QMainWindow):
         # animation clip table
         table_layout = QVBoxLayout()
         
-        self.table_view.setEditTriggers(QAbstractItemView.DoubleClicked |
-                                        QAbstractItemView.EditKeyPressed |
-                                        QAbstractItemView.AnyKeyPressed)
-        self.table_view.verticalHeader().setVisible(False)
-        
         if qt_version == 5:
-            self.table_view.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+            self.table_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         else:
-            self.table_view.horizontalHeader().setResizeMode(0, QHeaderView.Stretch)
+            self.table_widget.horizontalHeader().setResizeMode(0, QHeaderView.Stretch)
         
-        self.table_view.setColumnWidth(1, 80)  # fixed width for start
-        self.table_view.setColumnWidth(2, 80)  # fixed width for end
-        table_layout.addWidget(self.table_view)
+        self.table_widget.setColumnWidth(1, 80)
+        self.table_widget.setColumnWidth(2, 80)
+        table_layout.addWidget(self.table_widget)
         
         # table add/remove buttons
         table_button_layout = QHBoxLayout()
@@ -407,7 +401,7 @@ class ExportFbxToUnity(QMainWindow):
         self.has_stepped_checkbox.setEnabled(checked)
     
     def toggle_animation_clip(self, checked):
-        self.table_view.setEnabled(checked)
+        self.table_widget.setEnabled(checked)
         self.add_clip_button.setEnabled(checked)
         self.remove_clip_button.setEnabled(checked)
     
@@ -439,24 +433,62 @@ class ExportFbxToUnity(QMainWindow):
         self.set_folder_path_label.setText(self.export_dir + '/')
     
     def add_clip(self):
+        self.table_is_being_edited = True
+        
         name = "Take %03d" % (len(self.clip_data) + 1)
-        self.clip_data.append([name, pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)])
-        self.table_view.model().layoutChanged.emit()
+        start = str(pm.playbackOptions(q=True, min=True))
+        end = str(pm.playbackOptions(q=True, max=True))
+        data = [name, start, end]
+        row = self.table_widget.rowCount()
+        
+        self.table_widget.insertRow(row)
+        self.table_widget.setItem(row, 0, QTableWidgetItem(name))
+        self.table_widget.setItem(row, 1, QTableWidgetItem(start))
+        self.table_widget.setItem(row, 2, QTableWidgetItem(end))
+        
+        self.clip_data.append(data)
+        
+        self.table_is_being_edited = False
     
     def remove_clip(self):
-        selected_rows = sorted(set(index.row() for index in self.table_view.selectedIndexes()))
-        i = 0
+        self.table_is_being_edited = True
         
-        for row in selected_rows:
-            if len(self.clip_data) > 1:
-                del self.clip_data[row - i]
-                i += 1
-            elif len(self.clip_data) == 1:
-                self.clip_data.append(
-                    ["Take 001", pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)])
-                del self.clip_data[0]
+        rows = set()
+        for item in self.table_widget.selectedIndexes():
+            rows.add(item.row())
         
-        self.table_view.model().layoutChanged.emit()
+        for i, row in enumerate(rows):
+            self.table_widget.removeRow(row - i)
+            del self.clip_data[row - i]
+        
+        self.table_widget.clearSelection()
+        
+        self.table_is_being_edited = False
+        
+        if len(self.clip_data) == 0:
+            self.add_clip()
+    
+    def table_cell_changed(self, row, col):
+        if self.table_is_being_edited:
+            return
+        
+        self.table_is_being_edited = True
+        
+        val = self.table_widget.item(row, col).text()
+        
+        if col > 0:
+            try:
+                val = str(int(float(val)))
+            except ValueError:
+                pm.warning('"%s" is not a valid number.' % val)
+                val = '0.0'
+        
+        data = self.clip_data[row]
+        data[col] = val
+        self.clip_data[row] = data
+        
+        self.table_widget.setItem(row, col, QTableWidgetItem(val))
+        self.table_is_being_edited = False
     
     def export(self):
         if self.export_dir is None:
@@ -480,11 +512,19 @@ class ExportFbxToUnity(QMainWindow):
         
         self.save_options()
         
-        # if "bake animation" is checked
-        if self.bake_animation_checkbox.isChecked():
-            self.bake(time_range)
-        else:
-            self.export_fbx(time_range)
+        try:
+            cycle_check = pm.cycleCheck(q=True, evaluation=True)
+            pm.cycleCheck(evaluation=False)
+            
+            # if "bake animation" is checked
+            if self.bake_animation_checkbox.isChecked():
+                self.bake(time_range)
+            else:
+                self.export_fbx(time_range)
+            
+            pm.cycleCheck(evaluation=cycle_check)
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
     
     def bake(self, time_range):
         # if file has never been saved
@@ -500,7 +540,7 @@ class ExportFbxToUnity(QMainWindow):
                                    message='Do you want to save before baking the animation and re-open the file after '
                                            'it is done? This action cannot be undone!\n\n'
                                            'Baking also removes animation layers.',
-                                   button=['Save, bake and re-open', "Bake without saving", 'Cancel'],
+                                   button=['Save and Bake Animation', 'Bake Without Saving', 'Cancel'],
                                    cancelButton='Cancel',
                                    dismissString='Cancel')
         
@@ -508,8 +548,12 @@ class ExportFbxToUnity(QMainWindow):
             return
         
         # save original file
-        if confirm == 'Save, bake and re-open':
+        if confirm == 'Save and Bake Animation':
             original_file = pm.saveFile(force=True)
+            qApp.processEvents()
+        
+        # disable viewport
+        maya.mel.eval("paneLayout -e -manage false $gMainPane")
         
         # set playback range (appears that fbx uses it for the range when exporting)
         pm.playbackOptions(min=time_range[0], max=time_range[1])
@@ -518,23 +562,40 @@ class ExportFbxToUnity(QMainWindow):
             # bake keys
             self.custom_bake(time_range)
             self.remove_non_transform_curves()
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
+        
+        try:
             self.export_fbx(time_range)
         except Exception as e:
-            pm.warning('An unknown error occured.')
-            print str(e)
+            sys.stdout.write(str(e) + '\n')
+        
+        # enable viewport
+        maya.mel.eval("paneLayout -e -manage true $gMainPane")
         
         # open original file
-        if confirm == 'Save, bake and re-open':
-            pm.openFile(original_file, force=True)
+        if confirm == 'Save and Bake Animation':
+            try:
+                maya.utils.processIdleEvents()
+                qApp.processEvents()
+                confirmOpen = pm.confirmDialog(title='Open File',
+                                               message='The FBX file was saved. The original file will now be opened.',
+                                               button=['Open', 'Cancel'],
+                                               defaultButton='Open', cancelButton='Cancel', dismissString='Cancel')
+                
+                if confirmOpen == 'Open':
+                    pm.openFile(original_file, force=True)
+            except Exception as e:
+                sys.stdout.write(str(e) + '\n')
     
     def get_time_range(self):
         if self.time_slider_radio.isChecked():
             return pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)
         elif self.start_end_radio.isChecked():
             if self.start_input.text() == '' or self.end_input.text() == '':
-                pm.warning('You need to set start and end frame.')
+                pm.warning('You need to set a start and end frame.')
                 return None
-            return sorted((float(self.start_input.text()), float(self.end_input.text())))
+            return sorted((int(float(self.start_input.text())), int(float(self.end_input.text()))))
         return None
     
     def custom_bake(self, time_range):
@@ -557,7 +618,7 @@ class ExportFbxToUnity(QMainWindow):
             filtered = set(pm.ls(self.original_selection, type='joint'))
             filtered |= set(pm.listRelatives(self.original_selection, allDescendents=True, type='joint'))  # union op.
         except Exception as e:
-            print ("error 1: %s" % e)
+            sys.stdout.write("error 1: %s\n" % e)
         
         # add blendshapes and animated transforms to the set
         blendshapes = set()
@@ -585,17 +646,20 @@ class ExportFbxToUnity(QMainWindow):
                 if pm.hasAttr(node, at) and len(node.attr(at).inputs()) > 0:
                     filtered.add(node)
                     break
-
+        
         to_bake = list(filtered.union(blendshapes))
         
         samples = 1
         has_stepped = self.has_stepped_checkbox.isChecked()
         if has_stepped:
             samples = 0.5
-            
+        
         # merge animation layers if necessary
         if len(pm.ls(type='animLayer')) > 1:
             pm.mel.eval('animLayerMerge( `ls -type animLayer` )')
+        
+        maya.utils.processIdleEvents()
+        qApp.processEvents()
         
         if len(to_bake) == 0:
             pm.select(self.original_selection, r=True)
@@ -612,12 +676,32 @@ class ExportFbxToUnity(QMainWindow):
                        simulation=True,
                        minimizeRotation=False)
         
+        pm.flushUndo()
+        # maya.utils.processIdleEvents()
+        # qApp.processEvents()
+        
         # remove static channels to speed up analysis
         # to_bake.extend(joints)
-        pm.select(to_bake, r=True)
-        pm.delete(staticChannels=True)
+        try:
+            pm.select(to_bake, r=True)
+            pm.delete(staticChannels=True)
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
         
         muted_curves = []
+        
+        # progress bar
+        try:
+            gMainProgressBar = maya.mel.eval('$tmp = $gMainProgressBar')
+            pm.progressBar(gMainProgressBar,
+                           e=True,
+                           beginProgress=True,
+                           isInterruptable=True,
+                           status='Working...',
+                           maxValue=len(to_bake))
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
+        
         for obj in to_bake:
             for curve in pm.keyframe(obj, q=True, name=True):
                 # find muted curves
@@ -639,6 +723,16 @@ class ExportFbxToUnity(QMainWindow):
                                 pm.keyTangent(curve, time=(key,), ott='step')
                         except IndexError:
                             continue
+            
+            # update progress
+            pm.progressBar(gMainProgressBar, e=True, step=1)
+            if pm.progressBar(gMainProgressBar, q=True, isCancelled=True):
+                break
+        
+        # end progressbar
+        pm.progressBar(gMainProgressBar, e=True, endProgress=True)
+        
+        qApp.processEvents()
         
         pm.delete(muted_curves)
         
@@ -652,10 +746,16 @@ class ExportFbxToUnity(QMainWindow):
             self.apply_euler_filter(to_bake)
         
         pm.currentTime(time_range[0])
-        if to_bake:
-            pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False)
-        if blendshapes:
-            pm.setKeyframe(blendshapes, t=time_range[0], insertBlend=False)
+        
+        # set a key on the first frame
+        try:
+            if to_bake:
+                pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False,
+                               ott='step')
+            if blendshapes:
+                pm.setKeyframe(blendshapes, t=time_range[0], insertBlend=False, ott='step')
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
         
         # re-select original selection, so that we export the right thing
         pm.select(self.original_selection, r=True)
@@ -675,42 +775,51 @@ class ExportFbxToUnity(QMainWindow):
         pm.filterCurve(curves, filter='euler')
     
     def export_fbx(self, time_range):
+        sys.stdout.write('# Preparing to write FBX file...\n')
+        
+        # maybe autokeyframe messes up something
+        autoKeyState = bool(pm.autoKeyframe(q=True, state=True))
+        pm.autoKeyframe(state=False)
+        
         # get window properties
         if self.file_input.text() == '':
             pm.warning('You need to write a file name"')
             return False
         
         # set fbx options
-        pm.mel.eval('FBXResetExport')  # reset any user preferences so we start clean
-        pm.mel.eval('FBXExportAnimationOnly -v %d' % int(self.animation_only_checkbox.isChecked()))
-        pm.mel.eval('FBXExportBakeComplexAnimation -v 0')
-        pm.mel.eval('FBXExportBakeComplexStart -v %d' % time_range[0])
-        pm.mel.eval('FBXExportBakeComplexEnd -v %d' % time_range[1])
-        pm.mel.eval('FBXExportBakeResampleAnimation -v 0')
-        pm.mel.eval('FBXExportCameras -v 0')
-        pm.mel.eval('FBXExportConstraints -v 0')
-        pm.mel.eval('FBXExportLights -v 0')
-        pm.mel.eval('FBXExportQuaternion -v resample')
-        pm.mel.eval('FBXExportAxisConversionMethod none')
-        pm.mel.eval('FBXExportApplyConstantKeyReducer -v 0')
-        pm.mel.eval('FBXExportSmoothMesh -v 0')  # do not export subdivision version
-        pm.mel.eval('FBXExportShapes -v 1')  # needed for skins and blend shapes
-        pm.mel.eval('FBXExportSkins -v 1')
-        pm.mel.eval('FBXExportSkeletonDefinitions -v 1')
-        pm.mel.eval('FBXExportEmbeddedTextures -v 0')
-        pm.mel.eval('FBXExportInputConnections -v %d' % int(
-            self.input_connections_checkbox.isChecked()))  # should be off by default
-        pm.mel.eval('FBXExportInstances -v 1')  # preserve instances by sharing same mesh
-        pm.mel.eval('FBXExportUseSceneName -v 1')
-        pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')  # clear previous clips
-        
-        if self.animation_clip_checkbox.isChecked():
-            for row in self.clip_data:
-                pm.mel.eval('FBXExportSplitAnimationIntoTakes -v \"%s\" %d %d' %
-                            (str(row[0]), int(row[1]), int(row[2])))
-        
-        pm.mel.eval('FBXExportGenerateLog -v 0')
-        pm.mel.eval('FBXExportInAscii -v 0')
+        try:
+            pm.mel.eval('FBXResetExport')  # reset any user preferences so we start clean
+            pm.mel.eval('FBXExportAnimationOnly -v %d' % int(self.animation_only_checkbox.isChecked()))
+            pm.mel.eval('FBXExportBakeComplexAnimation -v 0')
+            pm.mel.eval('FBXExportBakeComplexStart -v %d' % time_range[0])
+            pm.mel.eval('FBXExportBakeComplexEnd -v %d' % time_range[1])
+            pm.mel.eval('FBXExportBakeResampleAnimation -v 0')
+            pm.mel.eval('FBXExportCameras -v 1')
+            pm.mel.eval('FBXExportConstraints -v 0')
+            pm.mel.eval('FBXExportLights -v 1')
+            pm.mel.eval('FBXExportQuaternion -v resample')
+            pm.mel.eval('FBXExportAxisConversionMethod none')
+            pm.mel.eval('FBXExportApplyConstantKeyReducer -v 0')
+            pm.mel.eval('FBXExportSmoothMesh -v 0')  # do not export subdivision version
+            pm.mel.eval('FBXExportShapes -v 1')  # needed for skins and blend shapes
+            pm.mel.eval('FBXExportSkins -v 1')
+            pm.mel.eval('FBXExportSkeletonDefinitions -v 1')
+            pm.mel.eval('FBXExportEmbeddedTextures -v 0')
+            pm.mel.eval('FBXExportInputConnections -v %d' % int(
+                self.input_connections_checkbox.isChecked()))  # should be off by default
+            pm.mel.eval('FBXExportInstances -v 1')  # preserve instances by sharing same mesh
+            pm.mel.eval('FBXExportUseSceneName -v 1')
+            pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')  # clear previous clips
+            
+            if self.animation_clip_checkbox.isChecked():
+                for row in self.clip_data:
+                    pm.mel.eval('FBXExportSplitAnimationIntoTakes -v \"%s\" %f %f' %
+                                (str(row[0]), int(float(row[1])), int(float(row[2]))))
+            
+            pm.mel.eval('FBXExportGenerateLog -v 0')
+            pm.mel.eval('FBXExportInAscii -v 0')
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
         
         # save the fbx
         f = "%s/%s.fbx" % (self.export_dir, self.file_input.text())
@@ -720,11 +829,20 @@ class ExportFbxToUnity(QMainWindow):
             try:
                 os.makedirs(d)
             except Exception as e:
-                sys.stdout.write(str(e))
+                sys.stdout.write(str(e) + '\n')
                 return
         
-        pm.mel.eval('FBXExport -f "%s" -s' % f)
+        # maya.utils.processIdleEvents()
+        
+        try:
+            pm.mel.eval('FBXExport -f "%s" -s' % f)
+        except Exception as e:
+            sys.stdout.write(str(e) + '\n')
+        
+        maya.utils.processIdleEvents()
+        
         sys.stdout.write('# Saved fbx to: %s\n' % f)
+        pm.autoKeyframe(state=autoKeyState)
     
     def close_window(self):
         self.save_options()
@@ -818,6 +936,8 @@ class ExportFbxToUnity(QMainWindow):
             self.export_dir = None
     
     def load_clips(self):
+        self.clip_data = self.clip_data = self.clip_data = [
+            ["Take 001", pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)]]
         try:
             read_clips = pm.system.fileInfo['exportfbxtounity_clips']
             if read_clips:
@@ -826,9 +946,17 @@ class ExportFbxToUnity(QMainWindow):
         except (RuntimeError, KeyError, ValueError):
             pass
         
-        # we have to re-assign the table model data with the clip data, otherwise the reference is lost!!
-        self.table_model.table_data = self.clip_data
-        self.table_view.model().layoutChanged.emit()
+        self.table_is_being_edited = True
+        self.table_widget.clearContents()
+        self.table_widget.setRowCount(0)
+        
+        for i, row_data in enumerate(self.clip_data):
+            self.table_widget.insertRow(i)
+            self.table_widget.setItem(i, 0, QTableWidgetItem(row_data[0]))
+            self.table_widget.setItem(i, 1, QTableWidgetItem(str(int(float(row_data[1])))))
+            self.table_widget.setItem(i, 2, QTableWidgetItem(str(int(float(row_data[2])))))
+        
+        self.table_is_being_edited = False
 
 
 class ElidedLabel(QLabel):
@@ -837,69 +965,3 @@ class ElidedLabel(QLabel):
         metrics = QFontMetrics(self.font())
         elided = metrics.elidedText(self.text(), Qt.ElideLeft, self.width())
         painter.drawText(self.rect(), self.alignment(), elided)
-
-
-class AnimationClipTableModel(QAbstractTableModel):
-    def __init__(self, parent, datain, header, *args):
-        try:
-            QAbstractTableModel.__init__(self, parent, *args)
-            self.table_data = datain
-            self.header = header
-        except Exception as e:
-            sys.stdout.write(str(e) + '\n')
-    
-    def rowCount(self, parent):
-        return len(self.table_data)
-    
-    def columnCount(self, parent):
-        col = 0
-        
-        if self.table_data[0]:
-            col = len(self.table_data[0])
-        
-        return col
-    
-    def data(self, index, role):
-        if role == Qt.DisplayRole or role == Qt.EditRole:
-            try:
-                row = index.row()
-                col = index.column()
-                return self.table_data[row][col]
-            except Exception as e:
-                sys.stdout.write(str(e) + '\n')
-        
-        return None
-    
-    def headerData(self, col, orientation, role):
-        try:
-            if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-                return self.header[col]
-            return None
-        except Exception as e:
-            sys.stdout.write(str(e) + '\n')
-    
-    def setData(self, index, value, role=Qt.EditRole):
-        try:
-            row = index.row()
-            col = index.column()
-            self.table_data[row][col] = value
-            self.emit(SIGNAL("dataChanged()"))
-        except Exception as e:
-            sys.stdout.write(str(e) + '\n')
-            return False
-        
-        return True
-    
-    def flags(self, index):
-        try:
-            flags = super(self.__class__, self).flags(index)
-            
-            flags |= Qt.ItemIsEditable
-            flags |= Qt.ItemIsSelectable
-            flags |= Qt.ItemIsEnabled
-            flags |= Qt.ItemIsDragEnabled
-            flags |= Qt.ItemIsDropEnabled
-            
-            return flags
-        except Exception as e:
-            sys.stdout.write(str(e) + '\n')

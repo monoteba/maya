@@ -745,12 +745,18 @@ class ExportFbxToUnity(QMainWindow):
         pm.currentTime(time_range[0])
         
         # set a key on the first frame
+        # todo: when doing stepped animation, all rotations needs to be either stepped or not, because of the way unity interpolates
         try:
+            if has_stepped:
+                tangent_type = 'step'
+            else:
+                tangent_type = 'auto'
+                
             if to_bake:
                 pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False,
-                               ott='step')
+                               ott=tangent_type)
             if blendshapes:
-                pm.setKeyframe(blendshapes, t=time_range[0], insertBlend=False, ott='step')
+                pm.setKeyframe(blendshapes, t=time_range[0], insertBlend=False, ott=tangent_type)
         except Exception as e:
             sys.stdout.write(str(e) + '\n')
         
@@ -792,9 +798,9 @@ class ExportFbxToUnity(QMainWindow):
             pm.mel.eval('FBXExportBakeComplexEnd -v %d' % time_range[1])
             pm.mel.eval('FBXExportBakeResampleAnimation -v 0')
             pm.mel.eval('FBXExportCameras -v 1')
-            pm.mel.eval('FBXExportConstraints -v 0')
+            pm.mel.eval('FBXExportConstraints -v 1')
             pm.mel.eval('FBXExportLights -v 1')
-            pm.mel.eval('FBXExportQuaternion -v resample')
+            pm.mel.eval('FBXExportQuaternion -v quaternion')
             pm.mel.eval('FBXExportAxisConversionMethod none')
             pm.mel.eval('FBXExportApplyConstantKeyReducer -v 0')
             pm.mel.eval('FBXExportSmoothMesh -v 0')  # do not export subdivision version

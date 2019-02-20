@@ -654,10 +654,6 @@ class ExportFbxToUnity(QMainWindow):
         if has_stepped:
             samples = 0.5
         
-        # merge animation layers if necessary
-        if len(pm.ls(type='animLayer')) > 1:
-            pm.mel.eval('animLayerMerge( `ls -type animLayer` )')
-        
         maya.utils.processIdleEvents()
         qApp.processEvents()
         
@@ -674,7 +670,8 @@ class ExportFbxToUnity(QMainWindow):
                        preserveOutsideKeys=False,
                        sparseAnimCurveBake=False,
                        simulation=True,
-                       minimizeRotation=False)
+                       minimizeRotation=False,
+                       removeBakedAnimFromLayer=True)
         
         pm.flushUndo()
         # maya.utils.processIdleEvents()

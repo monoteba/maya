@@ -100,16 +100,14 @@ class ExportFbxToUnity(QMainWindow):
         self.file_input.setToolTip('Tip: Save to subfolders using forward slashes like\nsubfolder/my_file.fbx')
         self.set_folder_path_label = ElidedLabel()
         
-        self.time_slider_radio = QRadioButton('Time slider')
-        self.start_end_radio = QRadioButton('Start/end')
-        self.start_end_label = self.create_label('Start/end:')
-        self.start_input = QLineEdit()
-        self.end_input = QLineEdit()
-        
         self.input_connections_layout = QHBoxLayout()
         self.input_connections_label = self.create_label('Input connections:')
         self.input_connections_checkbox = QCheckBox()
-        
+
+        self.constraints_layout = QHBoxLayout()
+        self.constraints_label = self.create_label('Constraints:')
+        self.constraints_checkbox = QCheckBox()
+
         self.animation_only_layout = QHBoxLayout()
         self.animation_only_label = self.create_label('Animation only:')
         self.animation_only_checkbox = QCheckBox()
@@ -126,12 +124,18 @@ class ExportFbxToUnity(QMainWindow):
         self.euler_filter_checkbox = QCheckBox()
         self.has_stepped_label = self.create_label('Has stepped tangents')
         self.has_stepped_checkbox = QCheckBox()
+
+        self.time_slider_radio = QRadioButton('Time slider')
+        self.start_end_radio = QRadioButton('Start/end')
+        self.start_end_label = self.create_label('Start/end:')
+        self.start_input = QLineEdit()
+        self.end_input = QLineEdit()
         
         self.animation_clip_layout = QHBoxLayout()
         self.animation_clip_label = self.create_label('Animation clips:')
         self.animation_clip_checkbox = QCheckBox()
         
-        self.clip_data = [["Take 001", pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)]]
+        self.clip_data = [["Take 001", int(pm.playbackOptions(q=True, min=True)), int(pm.playbackOptions(q=True, max=True))]]
         
         self.header_labels = ["Clip name", "Start", "End"]
         self.table_widget = QTableWidget()
@@ -244,36 +248,6 @@ class ExportFbxToUnity(QMainWindow):
         set_folder_layout.addWidget(set_folder_button)
         set_folder_layout.addWidget(self.set_folder_path_label)
         
-        # time slider and start/end
-        time_layout = QHBoxLayout()
-        time_label = self.create_label('Time range:')
-        self.time_slider_radio.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.start_end_radio.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        
-        self.connect(self.time_slider_radio, SIGNAL("toggled(bool)"), self.toggle_start_end)
-        self.connect(self.start_end_radio, SIGNAL("toggled(bool)"), self.toggle_start_end)
-        
-        time_layout.addWidget(time_label)
-        time_layout.addWidget(self.time_slider_radio)
-        time_layout.addWidget(self.start_end_radio)
-        
-        # start/end input
-        start_end_layout = QHBoxLayout()
-        
-        number_validator = QIntValidator()
-        locale = QLocale()
-        locale.setNumberOptions(QLocale.OmitGroupSeparator | QLocale.RejectGroupSeparator)
-        number_validator.setLocale(locale)
-        
-        self.start_input.setFixedHeight(input_height)
-        self.start_input.setValidator(number_validator)
-        self.end_input.setFixedHeight(input_height)
-        self.end_input.setValidator(number_validator)
-        
-        start_end_layout.addWidget(self.start_end_label)
-        start_end_layout.addWidget(self.start_input)
-        start_end_layout.addWidget(self.end_input)
-        
         # options
         self.input_connections_checkbox.setToolTip('Include input connections when exporting.')
         self.animation_only_checkbox.setToolTip('Only export animation without geometry. '
@@ -290,6 +264,9 @@ class ExportFbxToUnity(QMainWindow):
         
         self.input_connections_layout.addWidget(self.input_connections_label)
         self.input_connections_layout.addWidget(self.input_connections_checkbox)
+
+        self.constraints_layout.addWidget(self.constraints_label)
+        self.constraints_layout.addWidget(self.constraints_checkbox)
         
         self.animation_only_layout.addWidget(self.animation_only_label)
         self.animation_only_layout.addWidget(self.animation_only_checkbox)
@@ -304,6 +281,36 @@ class ExportFbxToUnity(QMainWindow):
         
         self.animation_clip_layout.addWidget(self.animation_clip_label)
         self.animation_clip_layout.addWidget(self.animation_clip_checkbox)
+
+        # time slider and start/end
+        self.time_layout = QHBoxLayout()
+        time_label = self.create_label('Time range:')
+        self.time_slider_radio.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.start_end_radio.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+        self.connect(self.time_slider_radio, SIGNAL("toggled(bool)"), self.toggle_start_end)
+        self.connect(self.start_end_radio, SIGNAL("toggled(bool)"), self.toggle_start_end)
+
+        self.time_layout.addWidget(time_label)
+        self.time_layout.addWidget(self.time_slider_radio)
+        self.time_layout.addWidget(self.start_end_radio)
+
+        # start/end input
+        start_end_layout = QHBoxLayout()
+
+        number_validator = QIntValidator()
+        locale = QLocale()
+        locale.setNumberOptions(QLocale.OmitGroupSeparator | QLocale.RejectGroupSeparator)
+        number_validator.setLocale(locale)
+
+        self.start_input.setFixedHeight(input_height)
+        self.start_input.setValidator(number_validator)
+        self.end_input.setFixedHeight(input_height)
+        self.end_input.setValidator(number_validator)
+
+        start_end_layout.addWidget(self.start_end_label)
+        start_end_layout.addWidget(self.start_input)
+        start_end_layout.addWidget(self.end_input)
         
         # animation clip table
         table_layout = QVBoxLayout()
@@ -344,14 +351,14 @@ class ExportFbxToUnity(QMainWindow):
         inner_vertical_layout.addLayout(file_layout)
         inner_vertical_layout.addLayout(set_folder_layout)
         inner_vertical_layout.addLayout(self.create_separator_layout())
-        inner_vertical_layout.addLayout(time_layout)
-        inner_vertical_layout.addLayout(start_end_layout)
-        inner_vertical_layout.addLayout(self.create_separator_layout())
-        inner_vertical_layout.addLayout(self.input_connections_layout)
         inner_vertical_layout.addLayout(self.animation_only_layout)
+        inner_vertical_layout.addLayout(self.constraints_layout)
+        inner_vertical_layout.addLayout(self.input_connections_layout)
         inner_vertical_layout.addLayout(self.create_separator_layout())
         inner_vertical_layout.addLayout(self.bake_animation_layout)
         inner_vertical_layout.addLayout(self.create_separator_layout())
+        inner_vertical_layout.addLayout(self.time_layout)
+        inner_vertical_layout.addLayout(start_end_layout)
         inner_vertical_layout.addLayout(self.animation_clip_layout)
         inner_vertical_layout.addLayout(table_layout)
         inner_vertical_layout.addLayout(table_button_layout)
@@ -404,6 +411,11 @@ class ExportFbxToUnity(QMainWindow):
         self.table_widget.setEnabled(checked)
         self.add_clip_button.setEnabled(checked)
         self.remove_clip_button.setEnabled(checked)
+        
+        widgets = (self.time_layout.itemAt(i) for i in range(self.time_layout.count()))
+        
+        for w in widgets:
+            w.widget().setEnabled(not checked)
     
     def update_export_folder_path(self):
         if self.export_dir:
@@ -436,8 +448,8 @@ class ExportFbxToUnity(QMainWindow):
         self.table_is_being_edited = True
         
         name = "Take %03d" % (len(self.clip_data) + 1)
-        start = str(pm.playbackOptions(q=True, min=True))
-        end = str(pm.playbackOptions(q=True, max=True))
+        start = str(int(pm.playbackOptions(q=True, min=True)))
+        end = str(int(pm.playbackOptions(q=True, max=True)))
         data = [name, start, end]
         row = self.table_widget.rowCount()
         
@@ -589,7 +601,16 @@ class ExportFbxToUnity(QMainWindow):
                 sys.stdout.write(str(e) + '\n')
     
     def get_time_range(self):
-        if self.time_slider_radio.isChecked():
+        if self.animation_clip_checkbox.isChecked() and self.clip_data:
+            s = []
+            e = []
+            for row in self.clip_data:
+                s.append(int(row[1]))
+                e.append(int(row[2]))
+            s.sort()
+            e.sort()
+            return (s[0], e[-1])
+        elif self.time_slider_radio.isChecked():
             return pm.playbackOptions(q=True, min=True), pm.playbackOptions(q=True, max=True)
         elif self.start_end_radio.isChecked():
             if self.start_input.text() == '' or self.end_input.text() == '':
@@ -751,7 +772,7 @@ class ExportFbxToUnity(QMainWindow):
                 tangent_type = 'step'
             else:
                 tangent_type = 'auto'
-                
+            
             if to_bake:
                 pm.setKeyframe(to_bake, attribute=self.transform_attributes, t=time_range[0], insertBlend=False,
                                ott=tangent_type)
@@ -762,6 +783,11 @@ class ExportFbxToUnity(QMainWindow):
         
         # re-select original selection, so that we export the right thing
         pm.select(self.original_selection, r=True)
+        
+        # select all child constraints if enabled
+        if self.constraints_checkbox.isChecked():
+            constraints = pm.listRelatives(pm.ls(sl=True), allDescendents=True, type='constraint')
+            pm.select(constraints, add=True)
     
     def remove_non_transform_curves(self):
         objs = self.original_selection
@@ -798,7 +824,7 @@ class ExportFbxToUnity(QMainWindow):
             pm.mel.eval('FBXExportBakeComplexEnd -v %d' % time_range[1])
             pm.mel.eval('FBXExportBakeResampleAnimation -v 0')
             pm.mel.eval('FBXExportCameras -v 1')
-            pm.mel.eval('FBXExportConstraints -v 1')
+            pm.mel.eval('FBXExportConstraints -v %d' % int(self.constraints_checkbox.isChecked()))
             pm.mel.eval('FBXExportLights -v 1')
             pm.mel.eval('FBXExportQuaternion -v quaternion')
             pm.mel.eval('FBXExportAxisConversionMethod none')
@@ -808,8 +834,7 @@ class ExportFbxToUnity(QMainWindow):
             pm.mel.eval('FBXExportSkins -v 1')
             pm.mel.eval('FBXExportSkeletonDefinitions -v 1')
             pm.mel.eval('FBXExportEmbeddedTextures -v 0')
-            pm.mel.eval('FBXExportInputConnections -v %d' % int(
-                self.input_connections_checkbox.isChecked()))  # should be off by default
+            pm.mel.eval('FBXExportInputConnections -v %d' % int(self.input_connections_checkbox.isChecked()))
             pm.mel.eval('FBXExportInstances -v 1')  # preserve instances by sharing same mesh
             pm.mel.eval('FBXExportUseSceneName -v 1')
             pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')  # clear previous clips
@@ -859,6 +884,7 @@ class ExportFbxToUnity(QMainWindow):
         pm.system.fileInfo['exportfbxtounity_start'] = self.start_input.text()
         pm.system.fileInfo['exportfbxtounity_end'] = self.end_input.text()
         pm.system.fileInfo['exportfbxtounity_input_connections'] = int(self.input_connections_checkbox.isChecked())
+        pm.system.fileInfo['exportfbxtounity_constraints'] = int(self.constraints_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_animation_only'] = int(self.animation_only_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_bake_animation'] = int(self.bake_animation_checkbox.isChecked())
         pm.system.fileInfo['exportfbxtounity_euler_filter'] = int(self.euler_filter_checkbox.isChecked())
@@ -903,6 +929,11 @@ class ExportFbxToUnity(QMainWindow):
             self.input_connections_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_input_connections']))
         except (RuntimeError, KeyError):
             self.input_connections_checkbox.setChecked(False)
+        
+        try:
+            self.constraints_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_constraints']))
+        except (RuntimeError, KeyError):
+            self.constraints_checkbox.setChecked(False)
         
         try:
             self.animation_only_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_animation_only']))

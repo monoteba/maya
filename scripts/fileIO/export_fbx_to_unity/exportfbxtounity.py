@@ -103,11 +103,11 @@ class ExportFbxToUnity(QMainWindow):
         self.input_connections_layout = QHBoxLayout()
         self.input_connections_label = self.create_label('Input connections:')
         self.input_connections_checkbox = QCheckBox()
-
+        
         self.constraints_layout = QHBoxLayout()
         self.constraints_label = self.create_label('Constraints:')
         self.constraints_checkbox = QCheckBox()
-
+        
         self.animation_only_layout = QHBoxLayout()
         self.animation_only_label = self.create_label('Animation only:')
         self.animation_only_checkbox = QCheckBox()
@@ -124,7 +124,7 @@ class ExportFbxToUnity(QMainWindow):
         self.euler_filter_checkbox = QCheckBox()
         self.has_stepped_label = self.create_label('Has stepped tangents')
         self.has_stepped_checkbox = QCheckBox()
-
+        
         self.time_slider_radio = QRadioButton('Time slider')
         self.start_end_radio = QRadioButton('Start/end')
         self.start_end_label = self.create_label('Start/end:')
@@ -135,7 +135,8 @@ class ExportFbxToUnity(QMainWindow):
         self.animation_clip_label = self.create_label('Animation clips:')
         self.animation_clip_checkbox = QCheckBox()
         
-        self.clip_data = [["Take 001", int(pm.playbackOptions(q=True, min=True)), int(pm.playbackOptions(q=True, max=True))]]
+        self.clip_data = [
+            ["Take 001", int(pm.playbackOptions(q=True, min=True)), int(pm.playbackOptions(q=True, max=True))]]
         
         self.header_labels = ["Clip name", "Start", "End"]
         self.table_widget = QTableWidget()
@@ -264,7 +265,7 @@ class ExportFbxToUnity(QMainWindow):
         
         self.input_connections_layout.addWidget(self.input_connections_label)
         self.input_connections_layout.addWidget(self.input_connections_checkbox)
-
+        
         self.constraints_layout.addWidget(self.constraints_label)
         self.constraints_layout.addWidget(self.constraints_checkbox)
         
@@ -281,36 +282,36 @@ class ExportFbxToUnity(QMainWindow):
         
         self.animation_clip_layout.addWidget(self.animation_clip_label)
         self.animation_clip_layout.addWidget(self.animation_clip_checkbox)
-
+        
         # time slider and start/end
         self.time_layout = QHBoxLayout()
         time_label = self.create_label('Time range:')
         self.time_slider_radio.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.start_end_radio.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-
+        
         self.connect(self.time_slider_radio, SIGNAL("toggled(bool)"), self.toggle_start_end)
         self.connect(self.start_end_radio, SIGNAL("toggled(bool)"), self.toggle_start_end)
-
+        
         self.time_layout.addWidget(time_label)
         self.time_layout.addWidget(self.time_slider_radio)
         self.time_layout.addWidget(self.start_end_radio)
-
+        
         # start/end input
-        start_end_layout = QHBoxLayout()
-
+        self.start_end_layout = QHBoxLayout()
+        
         number_validator = QIntValidator()
         locale = QLocale()
         locale.setNumberOptions(QLocale.OmitGroupSeparator | QLocale.RejectGroupSeparator)
         number_validator.setLocale(locale)
-
+        
         self.start_input.setFixedHeight(input_height)
         self.start_input.setValidator(number_validator)
         self.end_input.setFixedHeight(input_height)
         self.end_input.setValidator(number_validator)
-
-        start_end_layout.addWidget(self.start_end_label)
-        start_end_layout.addWidget(self.start_input)
-        start_end_layout.addWidget(self.end_input)
+        
+        self.start_end_layout.addWidget(self.start_end_label)
+        self.start_end_layout.addWidget(self.start_input)
+        self.start_end_layout.addWidget(self.end_input)
         
         # animation clip table
         table_layout = QVBoxLayout()
@@ -358,7 +359,7 @@ class ExportFbxToUnity(QMainWindow):
         inner_vertical_layout.addLayout(self.bake_animation_layout)
         inner_vertical_layout.addLayout(self.create_separator_layout())
         inner_vertical_layout.addLayout(self.time_layout)
-        inner_vertical_layout.addLayout(start_end_layout)
+        inner_vertical_layout.addLayout(self.start_end_layout)
         inner_vertical_layout.addLayout(self.animation_clip_layout)
         inner_vertical_layout.addLayout(table_layout)
         inner_vertical_layout.addLayout(table_button_layout)
@@ -413,6 +414,11 @@ class ExportFbxToUnity(QMainWindow):
         self.remove_clip_button.setEnabled(checked)
         
         widgets = (self.time_layout.itemAt(i) for i in range(self.time_layout.count()))
+        
+        for w in widgets:
+            w.widget().setEnabled(not checked)
+        
+        widgets = (self.start_end_layout.itemAt(i) for i in range(self.start_end_layout.count()))
         
         for w in widgets:
             w.widget().setEnabled(not checked)

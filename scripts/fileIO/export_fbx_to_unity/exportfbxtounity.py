@@ -394,8 +394,12 @@ class ExportFbxToUnity(QMainWindow):
         layout.addWidget(frame)
         return layout
     
-    def toggle_start_end(self, checked=False):
-        checked = self.start_end_radio.isChecked()
+    def toggle_start_end(self):
+        if self.animation_clip_checkbox.isChecked():
+            checked = False
+        else:
+            checked = self.start_end_radio.isChecked()
+            
         self.start_end_label.setEnabled(checked)
         self.start_input.setEnabled(checked)
         self.end_input.setEnabled(checked)
@@ -422,6 +426,8 @@ class ExportFbxToUnity(QMainWindow):
         
         for w in widgets:
             w.widget().setEnabled(not checked)
+        
+        self.toggle_start_end()
     
     def update_export_folder_path(self):
         if self.export_dir:
@@ -924,12 +930,12 @@ class ExportFbxToUnity(QMainWindow):
         try:
             self.start_input.setText(pm.system.fileInfo['exportfbxtounity_start'])
         except (RuntimeError, KeyError):
-            self.start_input.setText(str(pm.playbackOptions(q=True, ast=True)))
+            self.start_input.setText(str(int(pm.playbackOptions(q=True, ast=True))))
         
         try:
             self.end_input.setText(pm.system.fileInfo['exportfbxtounity_end'])
         except (RuntimeError, KeyError):
-            self.end_input.setText(str(pm.playbackOptions(q=True, aet=True)))
+            self.end_input.setText(str(int(pm.playbackOptions(q=True, aet=True))))
         
         try:
             self.input_connections_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_input_connections']))

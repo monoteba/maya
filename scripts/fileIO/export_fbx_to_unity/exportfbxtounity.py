@@ -924,12 +924,12 @@ class ExportFbxToUnity(QMainWindow):
         try:
             self.start_input.setText(pm.system.fileInfo['exportfbxtounity_start'])
         except (RuntimeError, KeyError):
-            self.start_input.setText('')
+            self.start_input.setText(str(pm.playbackOptions(q=True, ast=True)))
         
         try:
             self.end_input.setText(pm.system.fileInfo['exportfbxtounity_end'])
         except (RuntimeError, KeyError):
-            self.end_input.setText('')
+            self.end_input.setText(str(pm.playbackOptions(q=True, aet=True)))
         
         try:
             self.input_connections_checkbox.setChecked(int(pm.system.fileInfo['exportfbxtounity_input_connections']))

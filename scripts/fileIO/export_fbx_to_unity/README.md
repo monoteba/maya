@@ -13,7 +13,7 @@ A pipeline tool for simplifying FBX export from Maya for use in Unity and potent
 
 ## Installation
 
-Copy __[exportfbxtounity.py](exportfbxtounity.py)__ to Maya's scripts folder.
+Copy __[exportfbxtounity.py](https://github.com/mortenblaa/maya/raw/master/scripts/fileIO/export_fbx_to_unity/exportfbxtounity.py)__ to Maya's scripts folder.
 
 Add this Python code to a shelf button or execute it from the Script Editor
 

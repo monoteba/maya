@@ -156,10 +156,11 @@ class ExportFbxToUnity(QMainWindow):
         self.new_callback = om.MSceneMessage.addCallback(om.MSceneMessage.kAfterNew, self.after_open_file)
         
         # try to load fbx plugin
-        if pm.pluginInfo('fbxmaya.bundle', q=True, r=True):
-            pm.loadPlugin('fbxmaya.bundle', quiet=True)
-        else:
-            pm.warning('Could not load FBX plugin.')
+        if not pm.pluginInfo('fbxmaya.bundle', q=True, loaded=True):
+            try:
+                pm.loadPlugin('fbxmaya.bundle')
+            except:
+                pm.warning('# Could not load FBX plugin.')
         
         # create and open the ui
         self.create_window()

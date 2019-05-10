@@ -492,6 +492,15 @@ class ExportFbxToUnity(QMainWindow):
         
         if len(self.clip_data) == 0:
             self.add_clip()
+            
+    def move_clip(self):
+        self.table_is_being_edited = True
+        
+        rows = set()
+        for item in self.table_widget.selectedIndexes():
+            rows.add(item.row())
+        
+        self.table_is_being_edited = False
     
     def table_cell_changed(self, row, col):
         if self.table_is_being_edited:
@@ -695,6 +704,11 @@ class ExportFbxToUnity(QMainWindow):
             pm.select(self.original_selection, r=True)
             return
         
+        # set key tangent to auto when baking
+        itt = pm.keyTangent(q=True, g=True, itt=True)
+        ott = pm.keyTangent(q=True, g=True, ott=True)
+        pm.keyTangent(g=True, itt='auto', ott='auto')
+        
         # bake selected transforms and children with half step
         pm.bakeResults(to_bake,
                        time=time_range,
@@ -706,6 +720,9 @@ class ExportFbxToUnity(QMainWindow):
                        simulation=True,
                        minimizeRotation=False,
                        removeBakedAnimFromLayer=True)
+        
+        # set key tangent back to default
+        pm.keyTangent(g=True, itt=itt, ott=ott)
         
         pm.flushUndo()
         # maya.utils.processIdleEvents()

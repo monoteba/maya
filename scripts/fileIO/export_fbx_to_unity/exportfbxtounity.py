@@ -98,19 +98,23 @@ class ExportFbxToUnity(QMainWindow):
         # qt widgets
         self.file_input = QLineEdit()
         self.file_input.setToolTip('Tip: Save to subfolders using forward slashes like\nsubfolder/my_file.fbx')
+        self.file_input.editingFinished.connect(self.save_file_input_option)
         self.set_folder_path_label = ElidedLabel()
         
         self.input_connections_layout = QHBoxLayout()
         self.input_connections_label = self.create_label('Input connections:')
         self.input_connections_checkbox = QCheckBox()
+        self.input_connections_checkbox.clicked.connect(self.save_input_connections_option)
         
         self.constraints_layout = QHBoxLayout()
         self.constraints_label = self.create_label('Constraints:')
         self.constraints_checkbox = QCheckBox()
+        self.constraints_checkbox.clicked.connect(self.save_constraints_option)
         
         self.animation_only_layout = QHBoxLayout()
         self.animation_only_label = self.create_label('Animation only:')
         self.animation_only_checkbox = QCheckBox()
+        self.animation_only_checkbox.clicked.connect(self.save_animation_only_option)
         self.animation_only_description = QLabel('Blendshapes are not exported')
         self.animation_only_description.setStyleSheet('color: rgb(128, 128, 128);')
         self.animation_only_description.setFixedHeight(16)
@@ -120,10 +124,13 @@ class ExportFbxToUnity(QMainWindow):
         self.bake_animation_layout = QGridLayout()
         self.bake_animation_label = self.create_label('Bake animation:')
         self.bake_animation_checkbox = QCheckBox()
+        self.bake_animation_checkbox.clicked.connect(self.save_bake_animation_option)
         self.euler_filter_label = self.create_label('Apply euler filter')
         self.euler_filter_checkbox = QCheckBox()
+        self.euler_filter_checkbox.clicked.connect(self.save_euler_filter_option)
         self.has_stepped_label = self.create_label('Has stepped tangents')
         self.has_stepped_checkbox = QCheckBox()
+        self.has_stepped_checkbox.clicked.connect(self.save_has_stepped_option)
         
         self.time_slider_radio = QRadioButton('Time slider')
         self.start_end_radio = QRadioButton('Start/end')
@@ -131,9 +138,15 @@ class ExportFbxToUnity(QMainWindow):
         self.start_input = QLineEdit()
         self.end_input = QLineEdit()
         
+        self.time_slider_radio.clicked.connect(self.save_time_range_option)
+        self.start_end_radio.clicked.connect(self.save_time_range_option)
+        self.start_input.editingFinished.connect(self.save_time_range_option)
+        self.end_input.editingFinished.connect(self.save_time_range_option)
+        
         self.animation_clip_layout = QHBoxLayout()
         self.animation_clip_label = self.create_label('Animation clips:')
         self.animation_clip_checkbox = QCheckBox()
+        self.animation_clip_checkbox.clicked.connect(self.save_animation_clip_option)
         
         self.clip_data = [
             ["Take 001", int(pm.playbackOptions(q=True, min=True)), int(pm.playbackOptions(q=True, max=True))]]
@@ -224,9 +237,9 @@ class ExportFbxToUnity(QMainWindow):
         self.file_input.setFixedHeight(input_height)
         self.file_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         
-        file_regex = QRegExp("^[\w\d\.,-=@\(\)\[\]]+$")
-        file_validator = QRegExpValidator(file_regex, self.file_input)
-        self.file_input.setValidator(file_validator)
+        # file_regex = QRegExp("[ \\w\\d\\.\\,-=@\\(\\)\\[\\]]+")
+        # file_validator = QRegExpValidator(file_regex, self.file_input)
+        # self.file_input.setValidator(file_validator)
         
         file_layout.addWidget(file_label)
         file_layout.addWidget(self.file_input)
@@ -400,7 +413,7 @@ class ExportFbxToUnity(QMainWindow):
             checked = False
         else:
             checked = self.start_end_radio.isChecked()
-            
+        
         self.start_end_label.setEnabled(checked)
         self.start_input.setEnabled(checked)
         self.end_input.setEnabled(checked)
@@ -456,6 +469,7 @@ class ExportFbxToUnity(QMainWindow):
         
         self.export_dir = dialog_dir[0]
         self.set_folder_path_label.setText(self.export_dir + '/')
+        self.save_export_dir_option()
     
     def add_clip(self):
         self.table_is_being_edited = True
@@ -474,6 +488,8 @@ class ExportFbxToUnity(QMainWindow):
         self.clip_data.append(data)
         
         self.table_is_being_edited = False
+        
+        self.save_animation_clip_data()
     
     def remove_clip(self):
         self.table_is_being_edited = True
@@ -492,15 +508,8 @@ class ExportFbxToUnity(QMainWindow):
         
         if len(self.clip_data) == 0:
             self.add_clip()
-            
-    def move_clip(self):
-        self.table_is_being_edited = True
         
-        rows = set()
-        for item in self.table_widget.selectedIndexes():
-            rows.add(item.row())
-        
-        self.table_is_being_edited = False
+        self.save_animation_clip_data()
     
     def table_cell_changed(self, row, col):
         if self.table_is_being_edited:
@@ -523,6 +532,8 @@ class ExportFbxToUnity(QMainWindow):
         
         self.table_widget.setItem(row, col, QTableWidgetItem(val))
         self.table_is_being_edited = False
+        
+        self.save_animation_clip_data()
     
     def export(self):
         if self.export_dir is None:
@@ -543,8 +554,6 @@ class ExportFbxToUnity(QMainWindow):
         if time_range is None:
             pm.error('Could not determine time range.')
             return
-        
-        self.save_options()
         
         try:
             cycle_check = pm.cycleCheck(q=True, evaluation=True)
@@ -903,30 +912,47 @@ class ExportFbxToUnity(QMainWindow):
         pm.autoKeyframe(state=autoKeyState)
     
     def close_window(self):
-        self.save_options()
         self.close()
     
-    def save_options(self):
-        # save settings with file
+    def save_file_input_option(self):
         pm.system.fileInfo['exportfbxtounity_file_name'] = self.file_input.text()
-        pm.system.fileInfo['exportfbxtounity_time_slider_radio'] = int(self.time_slider_radio.isChecked())
-        pm.system.fileInfo['exportfbxtounity_start_end_radio'] = int(self.start_end_radio.isChecked())
-        pm.system.fileInfo['exportfbxtounity_start'] = self.start_input.text()
-        pm.system.fileInfo['exportfbxtounity_end'] = self.end_input.text()
-        pm.system.fileInfo['exportfbxtounity_input_connections'] = int(self.input_connections_checkbox.isChecked())
-        pm.system.fileInfo['exportfbxtounity_constraints'] = int(self.constraints_checkbox.isChecked())
-        pm.system.fileInfo['exportfbxtounity_animation_only'] = int(self.animation_only_checkbox.isChecked())
-        pm.system.fileInfo['exportfbxtounity_bake_animation'] = int(self.bake_animation_checkbox.isChecked())
-        pm.system.fileInfo['exportfbxtounity_euler_filter'] = int(self.euler_filter_checkbox.isChecked())
-        pm.system.fileInfo['exportfbxtounity_has_stepped'] = int(self.has_stepped_checkbox.isChecked())
-        pm.system.fileInfo['exportfbxtounity_animation_clip'] = int(self.animation_clip_checkbox.isChecked())
-        pm.system.fileInfo['exportfbxtounity_clips'] = json.dumps(self.clip_data)
-        
-        # save "export_dir" with preferences
+    
+    def save_export_dir_option(self):
+        # save "export_dir" with preferences instead of file
         if self.export_dir is not None:
             pm.optionVar['exportfbxtounity_save_dir'] = self.export_dir
         else:
             pm.optionVar['exportfbxtounity_save_dir'] = ''
+    
+    def save_time_range_option(self):
+        pm.system.fileInfo['exportfbxtounity_time_slider_radio'] = int(self.time_slider_radio.isChecked())
+        pm.system.fileInfo['exportfbxtounity_start_end_radio'] = int(self.start_end_radio.isChecked())
+        pm.system.fileInfo['exportfbxtounity_start'] = self.start_input.text()
+        pm.system.fileInfo['exportfbxtounity_end'] = self.end_input.text()
+    
+    def save_input_connections_option(self):
+        pm.system.fileInfo['exportfbxtounity_input_connections'] = int(self.input_connections_checkbox.isChecked())
+    
+    def save_constraints_option(self):
+        pm.system.fileInfo['exportfbxtounity_constraints'] = int(self.constraints_checkbox.isChecked())
+    
+    def save_animation_only_option(self):
+        pm.system.fileInfo['exportfbxtounity_animation_only'] = int(self.animation_only_checkbox.isChecked())
+    
+    def save_bake_animation_option(self):
+        pm.system.fileInfo['exportfbxtounity_bake_animation'] = int(self.bake_animation_checkbox.isChecked())
+    
+    def save_euler_filter_option(self):
+        pm.system.fileInfo['exportfbxtounity_euler_filter'] = int(self.euler_filter_checkbox.isChecked())
+    
+    def save_has_stepped_option(self):
+        pm.system.fileInfo['exportfbxtounity_has_stepped'] = int(self.has_stepped_checkbox.isChecked())
+    
+    def save_animation_clip_option(self):
+        pm.system.fileInfo['exportfbxtounity_animation_clip'] = int(self.animation_clip_checkbox.isChecked())
+    
+    def save_animation_clip_data(self):
+        pm.system.fileInfo['exportfbxtounity_clips'] = json.dumps(self.clip_data)
     
     def load_options(self):
         # try to load settings from file

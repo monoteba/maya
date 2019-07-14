@@ -8,8 +8,7 @@ A pipeline tool for simplifying FBX export from Maya for use in Unity and potent
 
 ## Features
 
-- File name is saved with the Maya file (use forward slashes for subfolders). 
-- Export folder is globally set (like a specific folder in your Unity project).
+- File name is saved with the Maya file.
 - Custom animation bake method that works well with "stepped" animation.
 - Easy setup of animation clips.
 

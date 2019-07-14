@@ -2,7 +2,9 @@
 
 A pipeline tool for simplifying FBX export from Maya for use in Unity and potentially other game engines. The tool uses Maya's own FBX plugin but includes some features for baking animation.
 
-![](export_fbx_to_unity_screenshot.png)
+<p align="center">
+<img src="export_fbx_to_unity_screenshot.png" width="50%" height="auto">
+</p>
 
 ## Features
 

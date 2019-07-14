@@ -19,6 +19,7 @@ exportfbxtounity.create()
 """
 
 import pymel.core as pm
+import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 import maya.api.OpenMaya as om
 import maya.utils
@@ -96,11 +97,6 @@ class ExportFbxToUnity(QMainWindow):
         self.transform_attributes = ['tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz', 'visibility']
         
         # qt widgets
-        self.file_input = QLineEdit()
-        self.file_input.setToolTip('Tip: Save to subfolders using forward slashes like\nsubfolder/my_file.fbx')
-        self.file_input.editingFinished.connect(self.save_file_input_option)
-        self.set_folder_path_label = ElidedLabel()
-        
         self.input_connections_layout = QHBoxLayout()
         self.input_connections_label = self.create_label('Input connections:')
         self.input_connections_checkbox = QCheckBox()
@@ -162,7 +158,8 @@ class ExportFbxToUnity(QMainWindow):
         self.remove_clip_button = QPushButton('Remove Selected Clips')
         
         # folder path for export
-        self.export_dir = None
+        self.save_dir = None
+        self.file_name = None
         
         # maya callbacks
         self.open_callback = om.MSceneMessage.addCallback(om.MSceneMessage.kAfterOpen, self.after_open_file)
@@ -209,12 +206,13 @@ class ExportFbxToUnity(QMainWindow):
         self.setCentralWidget(main_widget)
         
         main_vertical_layout = QVBoxLayout(main_widget)
-        main_vertical_layout.setContentsMargins(6, 6, 6, 6)
+        margin = apply_dpi_scaling(6)
+        main_vertical_layout.setContentsMargins(margin, margin, margin, margin)
         
         # style widgets
-        button_small_height = 22
-        button_large_height = 26
-        input_height = 20
+        button_small_height = apply_dpi_scaling(22)
+        button_large_height = apply_dpi_scaling(26)
+        input_height = apply_dpi_scaling(20)
         
         self.setStyleSheet(
             'QLineEdit { padding: 0 3px; border-radius: 2px; }'
@@ -227,41 +225,6 @@ class ExportFbxToUnity(QMainWindow):
         
         # create and arrange elements
         inner_vertical_layout = QVBoxLayout()
-        
-        # file layout
-        file_layout = QHBoxLayout()
-        
-        file_label = self.create_label('File name:')
-        
-        self.file_input.setPlaceholderText('e.g. Model@Animation')
-        self.file_input.setFixedHeight(input_height)
-        self.file_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        
-        # file_regex = QRegExp("[ \\w\\d\\.\\,-=@\\(\\)\\[\\]]+")
-        # file_validator = QRegExpValidator(file_regex, self.file_input)
-        # self.file_input.setValidator(file_validator)
-        
-        file_layout.addWidget(file_label)
-        file_layout.addWidget(self.file_input)
-        file_layout.setAlignment(Qt.AlignVCenter)
-        
-        # set project layout
-        set_folder_layout = QHBoxLayout()
-        
-        set_folder_label = self.create_label('Export folder:')
-        
-        set_folder_button = QPushButton('Set Export Folder')
-        set_folder_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        set_folder_button.setFixedHeight(button_small_height)
-        self.connect(set_folder_button, SIGNAL("clicked()"), self.set_export_folder)
-        
-        self.set_folder_path_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.set_folder_path_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.set_folder_path_label.setMinimumWidth(1)
-        
-        set_folder_layout.addWidget(set_folder_label)
-        set_folder_layout.addWidget(set_folder_button)
-        set_folder_layout.addWidget(self.set_folder_path_label)
         
         # options
         self.input_connections_checkbox.setToolTip('Include input connections when exporting.')
@@ -335,8 +298,8 @@ class ExportFbxToUnity(QMainWindow):
         else:
             self.table_widget.horizontalHeader().setResizeMode(0, QHeaderView.Stretch)
         
-        self.table_widget.setColumnWidth(1, 80)
-        self.table_widget.setColumnWidth(2, 80)
+        self.table_widget.setColumnWidth(1, apply_dpi_scaling(80))
+        self.table_widget.setColumnWidth(2, apply_dpi_scaling(80))
         table_layout.addWidget(self.table_widget)
         
         # table add/remove buttons
@@ -354,7 +317,7 @@ class ExportFbxToUnity(QMainWindow):
         
         # export and close buttons
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(4)
+        button_layout.setSpacing(apply_dpi_scaling(4))
         export_button = QPushButton('Export Selected')
         export_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         export_button.setFixedHeight(button_large_height)
@@ -363,9 +326,6 @@ class ExportFbxToUnity(QMainWindow):
         button_layout.addWidget(export_button)
         
         # add widgets to inner layout
-        inner_vertical_layout.addLayout(file_layout)
-        inner_vertical_layout.addLayout(set_folder_layout)
-        inner_vertical_layout.addLayout(self.create_separator_layout())
         inner_vertical_layout.addLayout(self.animation_only_layout)
         inner_vertical_layout.addLayout(self.constraints_layout)
         inner_vertical_layout.addLayout(self.input_connections_layout)
@@ -384,21 +344,20 @@ class ExportFbxToUnity(QMainWindow):
         
         self.load_options()
         self.toggle_start_end()
-        self.update_export_folder_path()
         self.toggle_bake_animation()
         self.toggle_animation_clip(self.animation_clip_checkbox.isChecked())
     
     @staticmethod
     def create_label(text):
         label = QLabel(text)
-        label.setFixedWidth(140)
-        label.setFixedHeight(16)
+        label.setFixedWidth(apply_dpi_scaling(140))
+        label.setFixedHeight(apply_dpi_scaling(16))
         label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         return label
     
     @staticmethod
     def create_spacer_item(height=8):
-        return QSpacerItem(1, height, QSizePolicy.Maximum, QSizePolicy.Fixed)
+        return QSpacerItem(1, apply_dpi_scaling(height), QSizePolicy.Maximum, QSizePolicy.Fixed)
     
     @staticmethod
     def create_separator_layout():
@@ -442,34 +401,6 @@ class ExportFbxToUnity(QMainWindow):
             w.widget().setEnabled(not checked)
         
         self.toggle_start_end()
-    
-    def update_export_folder_path(self):
-        if self.export_dir:
-            self.set_folder_path_label.setText(self.export_dir + '/')
-        else:
-            self.set_folder_path_label.setText('(not set)')
-    
-    def set_export_folder(self):
-        if not self.export_dir or self.export_dir == 'None':
-            dialog_dir = pm.fileDialog2(caption='Set FBX Export Folder',
-                                        dialogStyle=2,
-                                        fileMode=3,
-                                        fileFilter='.',
-                                        okCaption='Set Folder')
-        else:
-            dialog_dir = pm.fileDialog2(caption='Set FBX Export Folder',
-                                        dialogStyle=2,
-                                        fileMode=3,
-                                        fileFilter='.',
-                                        okCaption='Set Folder',
-                                        dir=self.export_dir)
-        
-        if dialog_dir is None:
-            return
-        
-        self.export_dir = dialog_dir[0]
-        self.set_folder_path_label.setText(self.export_dir + '/')
-        self.save_export_dir_option()
     
     def add_clip(self):
         self.table_is_being_edited = True
@@ -535,11 +466,42 @@ class ExportFbxToUnity(QMainWindow):
         
         self.save_animation_clip_data()
     
+    def set_export_path(self):
+        # resolve last file path
+        if self.save_dir:
+            path = self.save_dir
+        else:
+            path = pm.workspace(q=True, rd=True)
+        
+        if self.file_name:
+            path = path + '/' + self.file_name
+        
+        # show dialog
+        result = pm.fileDialog2(caption='Export FBX File',
+                                dialogStyle=2,
+                                fileMode=0,
+                                fileFilter='FBX Export (*.fbx)',
+                                okCaption='Export',
+                                dir=path)
+        
+        if result is None:
+            return False
+        
+        # set new export directory
+        path = os.path.split(result[0])
+        self.save_dir = path[0]
+        self.file_name = path[1]
+        
+        self.save_file_option()
+        
+        return True
+    
     def export(self):
-        if self.export_dir is None:
-            pm.warning('No folder has been set for export')
+        # where to save file?
+        if not self.set_export_path():
             return
         
+        # verify if anything is selected
         selection = pm.ls(sl=True)
         if not selection:
             pm.confirmDialog(title='No objects selected', message='Please select one or more object(s) to export.',
@@ -849,11 +811,6 @@ class ExportFbxToUnity(QMainWindow):
         autoKeyState = bool(pm.autoKeyframe(q=True, state=True))
         pm.autoKeyframe(state=False)
         
-        # get window properties
-        if self.file_input.text() == '':
-            pm.warning('You need to write a file name"')
-            return False
-        
         # set fbx options
         try:
             pm.mel.eval('FBXResetExport')  # reset any user preferences so we start clean
@@ -889,7 +846,7 @@ class ExportFbxToUnity(QMainWindow):
             sys.stdout.write(str(e) + '\n')
         
         # save the fbx
-        f = "%s/%s.fbx" % (self.export_dir, self.file_input.text())
+        f = self.save_dir + '/' + self.file_name
         
         d = os.path.dirname(f)
         if not os.path.isdir(d):
@@ -914,15 +871,9 @@ class ExportFbxToUnity(QMainWindow):
     def close_window(self):
         self.close()
     
-    def save_file_input_option(self):
-        pm.system.fileInfo['exportfbxtounity_file_name'] = self.file_input.text()
-    
-    def save_export_dir_option(self):
-        # save "export_dir" with preferences instead of file
-        if self.export_dir is not None:
-            pm.optionVar['exportfbxtounity_save_dir'] = self.export_dir
-        else:
-            pm.optionVar['exportfbxtounity_save_dir'] = ''
+    def save_file_option(self):
+        pm.system.fileInfo['exportfbxtounity_save_dir'] = self.save_dir
+        pm.system.fileInfo['exportfbxtounity_file_name'] = self.file_name
     
     def save_time_range_option(self):
         pm.system.fileInfo['exportfbxtounity_time_slider_radio'] = int(self.time_slider_radio.isChecked())
@@ -955,11 +906,24 @@ class ExportFbxToUnity(QMainWindow):
         pm.system.fileInfo['exportfbxtounity_clips'] = json.dumps(self.clip_data)
     
     def load_options(self):
-        # try to load settings from file
+        # try to load export_dir from local file
         try:
-            self.file_input.setText(pm.system.fileInfo['exportfbxtounity_file_name'])
+            self.save_dir = pm.system.fileInfo['exportfbxtounity_save_dir']
         except (RuntimeError, KeyError):
-            self.file_input.setText(os.path.splitext(os.path.basename(pm.system.sceneName()))[0])
+            self.save_dir = None
+        
+        if self.save_dir is None:
+            # try load "export_dir" from global settings instead
+            try:
+                self.save_dir = pm.optionVar['exportfbxtounity_save_dir']
+            except (RuntimeError, KeyError):
+                self.save_dir = None
+        
+        # try to load all other settings from file
+        try:
+            self.file_name = pm.system.fileInfo['exportfbxtounity_file_name']
+        except (RuntimeError, KeyError):
+            self.file_name = None
         
         try:
             self.time_slider_radio.setChecked(int(pm.system.fileInfo['exportfbxtounity_time_slider_radio']))
@@ -1018,12 +982,6 @@ class ExportFbxToUnity(QMainWindow):
         
         # animation clips
         self.load_clips()
-        
-        # load "export_dir" from preferences
-        try:
-            self.export_dir = pm.optionVar['exportfbxtounity_save_dir']
-        except (RuntimeError, KeyError):
-            self.export_dir = None
     
     def load_clips(self):
         self.clip_data = self.clip_data = self.clip_data = [
@@ -1049,9 +1007,9 @@ class ExportFbxToUnity(QMainWindow):
         self.table_is_being_edited = False
 
 
-class ElidedLabel(QLabel):
-    def paintEvent(self, *args, **kwargs):
-        painter = QPainter(self)
-        metrics = QFontMetrics(self.font())
-        elided = metrics.elidedText(self.text(), Qt.ElideLeft, self.width())
-        painter.drawText(self.rect(), self.alignment(), elided)
+def apply_dpi_scaling(value):
+    if hasattr(cmds, 'mayaDpiSetting'):
+        scale = cmds.mayaDpiSetting(q=True, scaleValue=True)
+        return int(scale * value)
+    else:
+        return int(value)

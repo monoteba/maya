@@ -82,8 +82,7 @@ class ExportFbxToUnity(QMainWindow):
         self.window_name = 'ExportFbxToUnityObj'
         self.setObjectName(self.window_name)
         
-        self.setMinimumWidth(350)
-        # self.setMaximumWidth(1000)
+        self.setMinimumWidth(apply_dpi_scaling(350))
         
         # we need both of these to make the window order behave correctly
         if os.name == 'nt':  # windows platform
@@ -1009,7 +1008,7 @@ class ExportFbxToUnity(QMainWindow):
 
 def apply_dpi_scaling(value):
     if hasattr(cmds, 'mayaDpiSetting'):
-        scale = cmds.mayaDpiSetting(q=True, scaleValue=True)
+        scale = cmds.mayaDpiSetting(q=True, realScaleValue=True)
         return int(scale * value)
     else:
         return int(value)

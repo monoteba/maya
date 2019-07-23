@@ -15,34 +15,36 @@ Alternatively, copy the entire script into a Python tab in the Script Editor, an
 fix_empty_shelves()
 """
 
+import maya.cmds as cmds
 import mmap
 import os
 import re
 import shutil
 from time import gmtime, strftime
 
-import pymel.core as pm
-
 
 def fix_empty_shelves(userprefs_file=None):
-    confirm = pm.confirmDialog(title='Fix empty shelves',
-                               message='This will find duplicate shelf entries in userPrefs.mel.\n\n'
-                                       'Maya needs to be closed at the end for the tool to work.\n\n'
-                                       'Please save all work before continuing.',
-                               button=['Continue', 'Cancel'],
-                               cancelButton='Cancel',
-                               dismissString='Cancel')
+    confirm = cmds.confirmDialog(title='Fix empty shelves',
+                                 message='This will find duplicate shelf entries in userPrefs.mel.\n\n'
+                                         'Maya needs to be closed at the end for the tool to work.\n\n'
+                                         'Please save all work before continuing.',
+                                 button=['Continue', 'Cancel'],
+                                 cancelButton='Cancel',
+                                 dismissString='Cancel')
     
     if confirm == 'Cancel':
         return
     
-    prefs_dir = pm.about(preferences=True)
-    
+    # if no path is supplied, try to find the default
     if userprefs_file is None:
+        prefs_dir = cmds.about(preferences=True)
         userprefs_file = prefs_dir + '/prefs/userPrefs.mel'
     
+    # replace backslashes with forward slashes
+    userprefs_file = userprefs_file.replace('\\', '/')
+    
     if not os.path.isfile(userprefs_file):
-        pm.warning('Could not find userPrefs.mel at %s' % userprefs_file)
+        cmds.warning('Could not find userPrefs.mel at %s' % userprefs_file)
         return
     
     # backup userPrefs.mel
@@ -50,55 +52,63 @@ def fix_empty_shelves(userprefs_file=None):
     shutil.copy2(userprefs_file, backup_file)
     
     # find duplicates
-    with open(userprefs_file, 'r+') as f:
-        data = mmap.mmap(f.fileno(), 0)
-        matches = re.findall(b'-sv "shelfName([0-9]+)" "(.*?)"', data)
-        
-        shelves = []
-        indices = []
-        names = []
-        
-        for shelf in matches:
-            if shelf[1] not in shelves:
-                shelves.append(shelf[1])
-            else:
-                names.append(shelf[1])
-                indices.append(shelf[0])
-        
-        f.seek(0)
-        lines = f.readlines()
+    if os.access(userprefs_file, os.R_OK):
+        with open(userprefs_file, 'r+') as f:
+            data = mmap.mmap(f.fileno(), 0)
+            matches = re.findall(b'-sv "shelfName([0-9]+)" "(.*?)"', data)
+            
+            shelves = []
+            indices = []
+            names = []
+            
+            for shelf in matches:
+                if shelf[1] not in shelves:
+                    shelves.append(shelf[1])
+                else:
+                    names.append(shelf[1])
+                    indices.append(shelf[0])
+            
+            f.seek(0)
+            lines = f.readlines()
+    else:
+        cmds.warning('Failed: Does not have permission to read file %s' % userprefs_file)
+        return
     
     if not indices:
-        pm.confirmDialog(title='No duplicates found :/',
-                         message='No changed were done and you can safely close the tool.',
-                         button=['OK'], cancelButton='OK', dismissString='OK')
+        cmds.confirmDialog(title='No duplicates found :/',
+                           message='No changed were done and you can safely close the tool.',
+                           button=['OK'], cancelButton='OK', dismissString='OK')
         os.remove(backup_file)
         return
     
     # remove duplicates
-    with open(userprefs_file, 'w+') as f:
-        for line in lines:
-            for i in indices:
-                pattern = re.compile('-.. "shelf(.*?)%s" (".*?"|[0-9+])' % i)
-                new_line = re.sub(pattern, '', line)
-                if line != new_line:
-                    line = new_line
-                    break
-            
-            f.writelines(line)
+    if os.access(userprefs_file, os.W_OK):
+        with open(userprefs_file, 'w+') as f:
+            for line in lines:
+                for i in indices:
+                    pattern = re.compile('-.. "shelf(.*?)%s" (".*?"|[0-9+])' % i)
+                    new_line = re.sub(pattern, '', line)
+                    if line != new_line:
+                        line = new_line
+                        break
+                
+                f.writelines(line)
+    else:
+        cmds.warning('Failed: Does not have permission to write to file %s' % userprefs_file)
+        return
     
     # restart maya
-    restart = pm.confirmDialog(title='Complete!',
-                               message='Removed %d shelf duplicates in userPrefs.mel.\n'
-                                       'Please restart Maya for the changes to take effect.' % len(indices),
-                               button=['Quit Maya', 'Cancel'],
-                               cancelButton='Cancel',
-                               dismissString='Cancel')
+    restart = cmds.confirmDialog(title='Complete!',
+                                 message='Removed %d shelf duplicates in userPrefs.mel.\n'
+                                         'Please restart Maya for the changes to take effect.' % len(indices),
+                                 button=['Quit Maya', 'Cancel'],
+                                 cancelButton='Cancel',
+                                 dismissString='Cancel')
     
-    save_settings = pm.optionVar['saveActionsPreferences']
-    pm.optionVar['saveActionsPreferences'] = 0
+    save_settings = cmds.optionVar['saveActionsPreferences']
+    cmds.optionVar['saveActionsPreferences'] = 0
     
     if restart == 'Quit Maya':
-        pm.runtime.Quit()
+        cmds.runtime.Quit()
     else:
-        pm.optionVar['saveActionsPreferences'] = save_settings
+        cmds.optionVar['saveActionsPreferences'] = save_settings

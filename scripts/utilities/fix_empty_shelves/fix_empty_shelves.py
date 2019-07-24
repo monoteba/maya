@@ -53,25 +53,32 @@ def fix_empty_shelves(userprefs_file=None):
     
     # find duplicates
     if os.access(userprefs_file, os.R_OK):
-        with open(userprefs_file, 'r+') as f:
-            data = mmap.mmap(f.fileno(), 0)
-            matches = re.findall(b'-sv "shelfName([0-9]+)" "(.*?)"', data)
-            
-            shelves = []
-            indices = []
-            names = []
-            
-            for shelf in matches:
-                if shelf[1] not in shelves:
-                    shelves.append(shelf[1])
-                else:
-                    names.append(shelf[1])
-                    indices.append(shelf[0])
-            
-            f.seek(0)
-            lines = f.readlines()
+        try:
+            with open(userprefs_file, 'r+') as f:
+                data = mmap.mmap(f.fileno(), 0)
+                matches = re.findall(b'-sv "shelfName([0-9]+)" "(.*?)"', data)
+                
+                shelves = []
+                indices = []
+                names = []
+                
+                for shelf in matches:
+                    if shelf[1] not in shelves:
+                        shelves.append(shelf[1])
+                    else:
+                        names.append(shelf[1])
+                        indices.append(shelf[0])
+                
+                f.seek(0)
+                lines = f.readlines()
+        except IOError as e:
+            cmds.warning('Could not read from file %s (%s)' % (userprefs_file, str(e)))
+            return
+        except Exception as e:
+            cmds.warning('An unknown error occured when trying to read from %s (%s)' % (userprefs_file, str(e)))
+            return
     else:
-        cmds.warning('Failed: Does not have permission to read file %s' % userprefs_file)
+        cmds.warning('Failed! Does not have permission to read file %s' % userprefs_file)
         return
     
     if not indices:
@@ -83,16 +90,23 @@ def fix_empty_shelves(userprefs_file=None):
     
     # remove duplicates
     if os.access(userprefs_file, os.W_OK):
-        with open(userprefs_file, 'w+') as f:
-            for line in lines:
-                for i in indices:
-                    pattern = re.compile('-.. "shelf(.*?)%s" (".*?"|[0-9+])' % i)
-                    new_line = re.sub(pattern, '', line)
-                    if line != new_line:
-                        line = new_line
-                        break
-                
-                f.writelines(line)
+        try:
+            with open(userprefs_file, 'w+') as f:
+                for line in lines:
+                    for i in indices:
+                        pattern = re.compile('-.. "shelf(.*?)%s" (".*?"|[0-9+])' % i)
+                        new_line = re.sub(pattern, '', line)
+                        if line != new_line:
+                            line = new_line
+                            break
+                    
+                    f.writelines(line)
+        except IOError as e:
+            cmds.warning('IOError: Could not write to file %s (%s)' % (userprefs_file, str(e)))
+            return
+        except Exception as e:
+            cmds.warning('An unknown error occured when trying to write to %s (%s)' % (userprefs_file, str(e)))
+            return
     else:
         cmds.warning('Failed: Does not have permission to write to file %s' % userprefs_file)
         return
@@ -105,10 +119,10 @@ def fix_empty_shelves(userprefs_file=None):
                                  cancelButton='Cancel',
                                  dismissString='Cancel')
     
-    save_settings = cmds.optionVar['saveActionsPreferences']
-    cmds.optionVar['saveActionsPreferences'] = 0
+    save_settings = int(cmds.optionVar(q='saveActionsPreferences'))
+    cmds.optionVar(iv=('saveActionsPreferences', 0))
     
     if restart == 'Quit Maya':
-        cmds.runtime.Quit()
+        cmds.Quit()
     else:
-        cmds.optionVar['saveActionsPreferences'] = save_settings
+        cmds.optionVar(iv=('saveActionsPreferences', save_settings))

@@ -833,6 +833,7 @@ class ExportFbxToUnity(QMainWindow):
             pm.mel.eval('FBXExportInstances -v 1')  # preserve instances by sharing same mesh
             pm.mel.eval('FBXExportUseSceneName -v 1')
             pm.mel.eval('FBXExportSplitAnimationIntoTakes -c')  # clear previous clips
+            pm.mel.eval('FBXExportFileVersion -v FBX201800')  # FBX version FBX202000 | FBX201900 | FBX201800 | FBX201600 | FBX201400 | FBX201300 | FBX201200 | FBX201100 | FBX201000 | FBX200900 | FBX200611
             
             if self.animation_clip_checkbox.isChecked():
                 for row in self.clip_data:

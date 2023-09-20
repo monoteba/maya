@@ -1,0 +1,91 @@
+{
+    proc ma_fbxClipsWindow()
+    {
+        if (`window -q -exists ma_fbxClipsWindow`)
+    	{
+    		deleteUI ma_fbxClipsWindow;
+    		// return;
+    	}
+
+    	// get data stored in file
+		string $text = "clip name; 0; 10";
+    	string $info[] = `fileInfo -q "ma_fbxClips"`;
+
+    	if (size($info) > 0)
+    	{
+    		$text = substituteAllString($info[0], "\\n", "\n");
+    	}
+    
+    	window -title "FBX Clips" ma_fbxClipsWindow;
+
+    		string $form = `formLayout -numberOfDivisions 100`;
+    
+    		print($text);
+			string $input = `scrollField -wordWrap false -editable true -text $text`;
+
+			string $cmd = "ma_fbxCreateClips(\"" + $input + "\"); deleteUI ma_fbxClipsWindow";
+			string $cancel = `button -label "Cancel" -command "deleteUI ma_fbxClipsWindow;"`;
+			string $ok = `button -label "Set Clips" -command $cmd`;
+    
+    		formLayout -edit 
+    			-attachForm $input "top" 5
+    			-attachForm $input "left" 5
+    			-attachForm $input "right" 5
+    			-attachControl $input "bottom" 5 $cancel
+
+    			-attachNone $cancel "top"
+    			-attachForm $cancel "left" 5
+    			-attachPosition $cancel "right" 5 50
+    			-attachForm $cancel "bottom" 5
+
+    			-attachNone $ok "top"
+    			-attachPosition $ok "left" 5 50
+    			-attachForm $ok "right" 5
+    			-attachForm $ok "bottom" 5
+
+    			$form;
+    
+    	showWindow ma_fbxClipsWindow;
+    }
+
+    proc ma_fbxCreateClips(string $control)
+    {
+    	string $input = `scrollField -q -text $control`;
+    	string $text = `substituteAllString $input "\r" "\n"`;
+
+    	string $lines[];
+    	tokenize $text "\n" $lines;
+
+    	// clear existing clips
+		FBXExportSplitAnimationIntoTakes -c;
+    	
+    	for ($line in $lines)
+    	{
+    		string $buffer[];
+    		int $tokens = `tokenize $line ";" $buffer`;
+
+    		if ($tokens != 3)
+    		{
+    			error("Failed to pass line: " + $line);
+    			continue;
+    		}
+
+    		string $name = $buffer[0];
+    		int $start = (int) $buffer[1];
+    		int $end = (int) $buffer[2];
+
+    		if ($start > $end)
+    		{
+    			error("Start time is greater than end time on line:" + $line);
+    		}
+    		else
+    		{
+    			FBXExportSplitAnimationIntoTakes -v $name $start $end;	
+    		}
+    	}
+
+    	fileInfo "ma_fbxClips" $input;
+    }
+	
+	ma_fbxClipsWindow();
+}

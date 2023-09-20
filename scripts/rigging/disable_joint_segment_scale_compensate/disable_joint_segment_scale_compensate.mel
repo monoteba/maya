@@ -1,0 +1,8 @@
+{
+	string $objs[] = `ls -sl -type "joint"`;
+
+	for ($jnt in $objs)
+	{
+		setAttr($jnt + ".segmentScaleCompensate", false);
+	}
+}

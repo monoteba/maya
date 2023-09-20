@@ -1,0 +1,17 @@
+{
+    string $objs[];
+    string $o;
+    
+    $objs = `ls -os`;
+    
+    for ($o in $objs)
+    {
+        float $r = rand(0.5) + 0.25;
+        float $g = rand(0.5) + 0.25;
+        float $b = rand(0.5) + 0.25;
+        select -r $o;
+        polyColorPerVertex -cdo -r $r -g $g -b $b -a 1.0;
+    }
+    
+    select -r $objs;
+}
